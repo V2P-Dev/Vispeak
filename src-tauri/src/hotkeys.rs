@@ -333,7 +333,6 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
     std::thread::spawn(move || {
         while let Ok(action) = rx.recv() {
             let app_clone = app_handle.clone();
-            let tx_inner = tx_processor.clone();
             match action {
                 HotkeyAction::RawEvent(event) => {
                     match event.event_type {
