@@ -1,5 +1,3 @@
-# Vispeak v0.1.1 (First Public Release)
-
 Vispeak is a local, offline voice dictation application for Windows that allows you to instantly transcribe speech into text anywhere. Simply press the global hotkey to start recording, speak naturally, and the transcribed text will be automatically pasted into your active text field.
 
 ## Key Features
