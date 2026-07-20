@@ -11,6 +11,7 @@ interface SidebarProps {
 
 import type { ReactNode } from "react";
 import { useUpdater } from "./UpdaterProvider";
+import { Logo } from "./Logo";
 
 export function Sidebar({ activePage, onPageChange, lang, onShowUpdate }: SidebarProps) {
   const { update, currentVersion } = useUpdater();
@@ -47,16 +48,6 @@ export function Sidebar({ activePage, onPageChange, lang, onShowUpdate }: Sideba
       )
     },
     {
-      id: "history",
-      label: t(lang, "sidebar.history"),
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="10" />
-          <polyline points="12 6 12 12 16 14" />
-        </svg>
-      )
-    },
-    {
       id: "general",
       label: t(lang, "sidebar.general"),
       icon: (
@@ -70,6 +61,16 @@ export function Sidebar({ activePage, onPageChange, lang, onShowUpdate }: Sideba
           <line x1="14" x2="14" y1="2" y2="6" />
           <line x1="8" x2="8" y1="10" y2="14" />
           <line x1="16" x2="16" y1="18" y2="22" />
+        </svg>
+      )
+    },
+    {
+      id: "history",
+      label: t(lang, "sidebar.history"),
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
         </svg>
       )
     },
@@ -92,14 +93,7 @@ export function Sidebar({ activePage, onPageChange, lang, onShowUpdate }: Sideba
       <div className="h-20 flex items-center px-6 shrink-0 relative">
         <h1 className="text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
           Vispeak
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-6 h-6 text-accent drop-shadow-[var(--shadow-accent-sm)]" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" strokeWidth="2"/>
-            <path d="M8 11v2" strokeWidth="1.5"/>
-            <path d="M10 9v6" strokeWidth="1.5"/>
-            <path d="M12 7v10" strokeWidth="1.5"/>
-            <path d="M14 9v6" strokeWidth="1.5"/>
-            <path d="M16 11v2" strokeWidth="1.5"/>
-          </svg>
+          <Logo className="w-7 h-7 text-accent" />
         </h1>
       </div>
 

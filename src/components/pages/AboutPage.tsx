@@ -2,6 +2,7 @@ import { Language, t } from "../../i18n";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useState } from "react";
 import { useUpdater, UpdateStatus } from "../UpdaterProvider";
+import { Logo } from "../Logo";
 
 interface AboutPageProps {
   lang: Language;
@@ -34,14 +35,7 @@ export function AboutPage({ lang }: AboutPageProps) {
         {/* Big Logo */}
         <div className="relative mb-2">
           <div className="w-24 h-24 flex items-center justify-center relative z-10">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-20 h-20 text-accent drop-shadow-[var(--shadow-accent-sm)]" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" strokeWidth="2"/>
-              <path d="M8 11v2" strokeWidth="1.5"/>
-              <path d="M10 9v6" strokeWidth="1.5"/>
-              <path d="M12 7v10" strokeWidth="1.5"/>
-              <path d="M14 9v6" strokeWidth="1.5"/>
-              <path d="M16 11v2" strokeWidth="1.5"/>
-            </svg>
+            <Logo className="w-24 h-24 text-accent" />
           </div>
           {/* Subtle glow behind logo */}
           <div className="absolute inset-0 bg-accent/20 blur-2xl rounded-full z-0 translate-y-2 scale-75" />

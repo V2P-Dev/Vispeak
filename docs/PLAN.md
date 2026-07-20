@@ -221,9 +221,7 @@ Vispeak — desktop-приложение для локальной офлайн-
   GitHub Releases, подпись, диалог с прогрессом, relaunch).
 - [x] Инсталлятор NSIS (one-exe, currentUser, downloadBootstrapper, ru+en,
   onnxruntime DLL в бандле).
-- [x] Иконка приложения: облако (speech bubble) с эквалайзером, акцент #ff5533.
-  SVG-мастер в `src/assets/icon-master.svg`, генерация набора иконок через Tauri
-  CLI; атрибуция в UI (AboutPage).
+- [x] Иконка приложения: только контур облака (speech bubble) с эквалайзером, акцент #ff5533, без внешнего фона и квадратной подложки. Единственный мастер-исходник в `src/assets/icon-source.png`, генерация набора иконок через Tauri CLI; атрибуция в UI (AboutPage).
 - [x] Первый публичный релиз v0.1.1 (выпуск через GitHub Actions).
 
 ### Автообновление — детали

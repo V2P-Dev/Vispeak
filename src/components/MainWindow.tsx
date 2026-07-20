@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Sidebar } from "./Sidebar";
@@ -22,6 +22,7 @@ interface DownloadProgress {
 export function MainWindow() {
   const [activePage, setActivePage] = useState<Page>("model");
   const [lang, setLang] = useState<Language>("en");
+  const scrollRef = useRef<HTMLDivElement>(null);
   
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [progressMap, setProgressMap] = useState<Record<string, number>>({});
@@ -75,6 +76,13 @@ export function MainWindow() {
     return () => clearInterval(interval);
   }, [activePage]);
 
+  // Reset scroll position when switching pages
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, [activePage]);
+
   const handleDownload = async (id: string) => {
     setDownloading(prev => ({ ...prev, [id]: true }));
     setProgressMap(prev => ({ ...prev, [id]: 0 }));
@@ -124,7 +132,7 @@ export function MainWindow() {
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto px-10 pb-10">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-10 pb-10">
           {activePage === "model" && (
             <ModelPage 
               lang={lang}

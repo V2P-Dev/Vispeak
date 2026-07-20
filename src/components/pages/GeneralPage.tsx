@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { enable, disable } from "@tauri-apps/plugin-autostart";
+import { Info } from "lucide-react";
 import { Language, t, getLanguage } from "../../i18n";
 import { applyThemeToDocument } from "../../theme";
 
@@ -270,10 +271,18 @@ export function GeneralPage({ lang }: GeneralPageProps) {
           
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-secondary flex items-center gap-2">
-                {t(lang, "general.gain")}
-                <span className="text-primary font-semibold">{gain.toFixed(1)}x</span>
-              </label>
+              <div className="flex items-center gap-2 group">
+                <label className="text-sm font-medium text-secondary flex items-center gap-2">
+                  {t(lang, "general.gain")}
+                  <span className="text-primary font-semibold">{gain.toFixed(1)}x</span>
+                </label>
+                <div className="relative flex items-center justify-center">
+                  <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-surface border border-border text-primary text-xs rounded-lg w-64 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 leading-relaxed">
+                    {t(lang, "general.gain_tooltip")}
+                  </div>
+                </div>
+              </div>
               {gain !== 1.0 && (
                 <button 
                   onClick={() => updateSetting("microphone_gain", 1.0)}
@@ -318,13 +327,16 @@ export function GeneralPage({ lang }: GeneralPageProps) {
         {/* Autostart */}
         <div className="p-5 bg-surface border border-border rounded-2xl flex flex-col gap-4">
           <div className="flex items-center justify-between cursor-pointer" onClick={() => updateSetting("autostart", !autostart)}>
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-medium text-primary">
+            <div className="flex items-center gap-2 group min-w-0">
+              <span className="text-base font-medium text-primary truncate">
                 {t(lang, "general.autostart")}
               </span>
-              <span className="text-sm text-secondary">
-                {t(lang, "general.autostart_desc")}
-              </span>
+              <div className="relative flex items-center justify-center">
+                <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-surface border border-border text-primary text-xs rounded-lg w-48 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 whitespace-normal">
+                  {t(lang, "general.autostart_desc")}
+                </div>
+              </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${autostart ? 'bg-accent' : 'bg-border'}`}>
               <div className={`w-4 h-4 bg-white rounded-full transition-transform ${autostart ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -334,13 +346,16 @@ export function GeneralPage({ lang }: GeneralPageProps) {
           <div className="h-px bg-border w-full"></div>
           
           <div className="flex items-center justify-between cursor-pointer" onClick={() => updateSetting("silent_start", !silentStart)}>
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-medium text-primary">
+            <div className="flex items-center gap-2 group min-w-0">
+              <span className="text-base font-medium text-primary truncate">
                 {t(lang, "general.silent_start")}
               </span>
-              <span className="text-sm text-secondary">
-                {t(lang, "general.silent_start_desc")}
-              </span>
+              <div className="relative flex items-center justify-center">
+                <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-surface border border-border text-primary text-xs rounded-lg w-48 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 whitespace-normal">
+                  {t(lang, "general.silent_start_desc")}
+                </div>
+              </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${silentStart ? 'bg-accent' : 'bg-border'}`}>
               <div className={`w-4 h-4 bg-white rounded-full transition-transform ${silentStart ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -351,13 +366,16 @@ export function GeneralPage({ lang }: GeneralPageProps) {
         {/* Audio behavior */}
         <div className="p-5 bg-surface border border-border rounded-2xl flex flex-col gap-4">
           <div className="flex items-center justify-between cursor-pointer" onClick={() => updateSetting("sound_cues", !soundCues)}>
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-medium text-primary">
+            <div className="flex items-center gap-2 group min-w-0">
+              <span className="text-base font-medium text-primary truncate">
                 {t(lang, "general.sound_cues")}
               </span>
-              <span className="text-sm text-secondary">
-                {t(lang, "general.sound_cues_desc")}
-              </span>
+              <div className="relative flex items-center justify-center">
+                <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-surface border border-border text-primary text-xs rounded-lg w-48 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 whitespace-normal">
+                  {t(lang, "general.sound_cues_desc")}
+                </div>
+              </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${soundCues ? 'bg-accent' : 'bg-border'}`}>
               <div className={`w-4 h-4 bg-white rounded-full transition-transform ${soundCues ? 'translate-x-5' : 'translate-x-0'}`} />
@@ -367,13 +385,16 @@ export function GeneralPage({ lang }: GeneralPageProps) {
           <div className="h-px bg-border w-full"></div>
           
           <div className="flex items-center justify-between cursor-pointer" onClick={() => updateSetting("duck_audio", !duckAudio)}>
-            <div className="flex flex-col gap-1">
-              <span className="text-base font-medium text-primary">
+            <div className="flex items-center gap-2 group min-w-0">
+              <span className="text-base font-medium text-primary truncate">
                 {t(lang, "general.duck_audio")}
               </span>
-              <span className="text-sm text-secondary">
-                {t(lang, "general.duck_audio_desc")}
-              </span>
+              <div className="relative flex items-center justify-center">
+                <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-surface border border-border text-primary text-xs rounded-lg w-48 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 whitespace-normal">
+                  {t(lang, "general.duck_audio_desc")}
+                </div>
+              </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${duckAudio ? 'bg-accent' : 'bg-border'}`}>
               <div className={`w-4 h-4 bg-white rounded-full transition-transform ${duckAudio ? 'translate-x-5' : 'translate-x-0'}`} />

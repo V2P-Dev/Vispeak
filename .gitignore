@@ -29,7 +29,6 @@ src-tauri/gen/
 target/
 
 # Local documents and secrets
-GEMINI.md
 
 *.key
 *.key.password

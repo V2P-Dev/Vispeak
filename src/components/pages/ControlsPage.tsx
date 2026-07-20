@@ -315,8 +315,14 @@ export function ControlsPage({ lang }: ControlsPageProps) {
         <div className="bg-surface border border-border rounded-2xl flex flex-col">
           
           <div className="flex items-center justify-between p-5 border-b border-border">
-            <div className="flex flex-col gap-1 w-1/3 pr-4">
+            <div className="flex items-center gap-2 group w-1/3">
               <span className="text-sm font-medium text-primary whitespace-nowrap">{t(lang, "controls.text_input_method")}</span>
+              <div className="relative flex items-center justify-center">
+                <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-2 bg-surface border border-border text-primary text-xs rounded-lg w-64 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 leading-relaxed">
+                  {t(lang, "controls.text_input_method_tooltip")}
+                </div>
+              </div>
             </div>
             <div className="flex items-center gap-3 w-2/3 justify-end">
               <select 
