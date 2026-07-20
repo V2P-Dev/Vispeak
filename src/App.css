@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@theme {
+  --color-window: var(--window);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-overlay: var(--overlay);
+  --color-primary: var(--primary);
+  --color-secondary: var(--secondary);
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-success: var(--success);
+  --color-processing: var(--processing);
+  --color-knob: var(--knob);
+  
+  --radius-xl: 16px;
+  --radius-lg: 12px;
+
+  --animate-processing-dot: processing-dot 1.2s infinite ease-in-out both;
+
+  @keyframes processing-dot {
+    0%, 80%, 100% {
+      transform: scale(0.6);
+      opacity: 0.4;
+      box-shadow: none;
+    }
+    40% {
+      transform: scale(1.1);
+      opacity: 1;
+      box-shadow: 0 0 8px var(--color-processing);
+    }
+  }
+}
+
+@layer base {
+  :root {
+    --window: #0d0d0d;
+    --surface: #1c1c1e;
+    --border: #2a2a2e;
+    --overlay: #141414;
+    --primary: #f5f5f7;
+    --secondary: #8e8e93;
+    --accent: #ff5533;
+    --accent-text: #0d0d0d;
+    --success: #7ed491;
+    --processing: #4dd8e6;
+    --knob: #f5f5f7;
+
+    --shadow-accent-xs: 0 0 6px rgba(255, 85, 51, 0.4);
+    --shadow-accent-sm: 0 0 8px rgba(255, 85, 51, 0.6);
+    --shadow-accent-md: 0 0 12px rgba(255, 85, 51, 0.3);
+    --shadow-accent-lg: 0 0 30px rgba(255, 85, 51, 0.15);
+  }
+
+  :root[data-theme="light"],
+  html[data-theme="light"],
+  body[data-theme="light"],
+  [data-theme="light"] {
+    --window: #f4f4f5;
+    --surface: #ffffff;
+    --border: #e4e4e7;
+    --overlay: #141414;
+    --primary: #1c1c1e;
+    --secondary: #6e6e73;
+    --accent: #e84a2b;
+    --accent-text: #ffffff;
+    --success: #34a862;
+    --processing: #0899ab;
+    --knob: #ffffff;
+
+    --shadow-accent-xs: 0 2px 6px rgba(232, 74, 43, 0.15);
+    --shadow-accent-sm: 0 2px 8px rgba(232, 74, 43, 0.2);
+    --shadow-accent-md: 0 4px 12px rgba(232, 74, 43, 0.15);
+    --shadow-accent-lg: 0 8px 24px rgba(232, 74, 43, 0.1);
+  }
+
+  :root[data-theme="dark"],
+  html[data-theme="dark"],
+  body[data-theme="dark"],
+  [data-theme="dark"] {
+    --window: #0d0d0d;
+    --surface: #1c1c1e;
+    --border: #2a2a2e;
+    --overlay: #141414;
+    --primary: #f5f5f7;
+    --secondary: #8e8e93;
+    --accent: #ff5533;
+    --accent-text: #0d0d0d;
+    --success: #7ed491;
+    --processing: #4dd8e6;
+    --knob: #f5f5f7;
+
+    --shadow-accent-xs: 0 0 6px rgba(255, 85, 51, 0.4);
+    --shadow-accent-sm: 0 0 8px rgba(255, 85, 51, 0.6);
+    --shadow-accent-md: 0 0 12px rgba(255, 85, 51, 0.3);
+    --shadow-accent-lg: 0 0 30px rgba(255, 85, 51, 0.15);
+  }
+
+  body {
+    @apply text-primary font-sans antialiased m-0 p-0 overflow-hidden bg-transparent;
+  }
+
+  /* Custom Scrollbar Styles */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border-radius: 8px;
+    border: 2px solid var(--window);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--secondary);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}
