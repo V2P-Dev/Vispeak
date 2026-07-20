@@ -77,3 +77,15 @@ NOT, and ask.
 - Version must be in sync across tauri.conf.json and package.json.
 - Show release notes BEFORE tagging; verify latest.json AFTER the build
   (version, signature, url pointing to the NSIS .exe, endpoint reachable).
+
+### Release notes rules
+- Release notes are a CONCISE CHANGELOG only ("What's changed"), never a full app
+  description.
+- NEVER add a "# Vispeak vX.Y.Z" title inside the notes body — GitHub already
+  renders the version as the release title from the tag; repeating it duplicates
+  the heading.
+- Do NOT repeat app description / key features / privacy / installation in each
+  release; those live in the README.
+- The first release (v0.1.1) keeps its full "showcase" description; from v0.1.2
+  onward, notes are changelog-only.
+- Use docs/RELEASE_NOTES_TEMPLATE.md as the base; fill only non-empty categories.
