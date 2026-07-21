@@ -11,6 +11,8 @@ export const translations = {
     },
     header: {
       ready: "Готов",
+      standby: "Ожидание",
+      loading: "Загрузка...",
     },
     model: {
       title: "Выбор модели",
@@ -31,8 +33,9 @@ export const translations = {
       translation_en_tooltip: "Переводит речь с любого языка на английский текст",
       translation_pairs: "Перевод ⇄",
       translation_pairs_tooltip: "Переводит между английским, немецким, французским и испанским",
-      recommended: "Рекомендуемые",
-      others: "Другие",
+      status_active: "Активная",
+      status_downloaded: "Скачанные",
+      status_available: "Доступные",
       desc: {
         "tiny": "39M параметров. Самая быстрая модель, подходит для слабых ПК.",
         "base": "74M параметров. Хороший баланс скорости и качества для базовых задач.",
@@ -50,7 +53,8 @@ export const translations = {
         "Multilingual": "Мультиязычная",
         "Russian": "Русский язык",
         "Для слабых ПК": "Для слабых ПК",
-        "Максимальное качество": "Максимальное качество"
+        "Максимальное качество": "Максимальное качество",
+        "Recommended": "Рекомендуемая"
       }
     },
     controls: {
@@ -158,6 +162,12 @@ export const translations = {
       history_limit_10: "Последние 10",
       history_size: "Занято место: {size} МБ",
       history_clear: "Очистить историю",
+      auto_unload: "Освобождать память при неиспользовании",
+      auto_unload_desc: "Если модель не использовалась заданное время, она выгружается из оперативной памяти. Следующая диктовка начнётся чуть позже — модель загрузится заново.",
+      auto_unload_never: "Никогда",
+      auto_unload_1min: "Через 1 минуту",
+      auto_unload_5min: "Через 5 минут",
+      auto_unload_15min: "Через 15 минут",
     },
     history: {
       title: "История",
@@ -191,6 +201,7 @@ export const translations = {
     },
     overlay: {
       recording: "Запись...",
+      loading_model: "Загрузка модели...",
       processing: "Обработка...",
       error_no_mic: "Нет доступа к микрофону",
       error_short: "Речь не распознана",
@@ -215,6 +226,8 @@ export const translations = {
       "server-unavailable": "Сервер обновлений временно недоступен.",
       "invalid-signature": "Файл обновления не прошёл проверку подписи.",
       "error": "Ошибка при проверке обновлений.",
+      "see_github": "Смотрите ",
+      "release_notes_github": "полное описание релиза на GitHub"
     }
   },
   en: {
@@ -227,6 +240,8 @@ export const translations = {
     },
     header: {
       ready: "Ready",
+      standby: "Standby",
+      loading: "Loading...",
     },
     model: {
       title: "Model Selection",
@@ -247,8 +262,9 @@ export const translations = {
       delete: "Delete",
       select: "Select",
       selected: "Selected",
-      recommended: "Recommended",
-      others: "Others",
+      status_active: "Active",
+      status_downloaded: "Downloaded",
+      status_available: "Available",
       desc: {
         "tiny": "39M parameters. Fastest model, suitable for low-end PCs.",
         "base": "74M parameters. Good balance of speed and accuracy for basic tasks.",
@@ -266,7 +282,8 @@ export const translations = {
         "Multilingual": "Multilingual",
         "Russian": "Russian",
         "Для слабых ПК": "For low-end PCs",
-        "Максимальное качество": "Maximum quality"
+        "Максимальное качество": "Maximum quality",
+        "Recommended": "Recommended"
       }
     },
     controls: {
@@ -355,6 +372,9 @@ export const translations = {
       overlay_skin: "Indicator Style",
       skin_full: "Full",
       skin_compact: "Compact",
+      skin_mini: "At Caret",
+      skin_mini_desc: "Appears above the text cursor. If the target application does not allow determining the cursor position, the indicator appears according to the position setting",
+      pos_fallback_hint: "(used when caret position is unavailable)",
       overlay_position: "Overlay Position",
       pos_bottom_center: "Bottom Center",
       pos_bottom_right: "Bottom Right",
@@ -371,6 +391,12 @@ export const translations = {
       history_limit_10: "Last 10",
       history_size: "Used space: {size} MB",
       history_clear: "Clear history",
+      auto_unload: "Free memory when idle",
+      auto_unload_desc: "If the model is unused for the set time, it is unloaded from memory. The next dictation will start slightly later while the model reloads.",
+      auto_unload_never: "Never",
+      auto_unload_1min: "After 1 minute",
+      auto_unload_5min: "After 5 minutes",
+      auto_unload_15min: "After 15 minutes",
     },
     history: {
       title: "History",
@@ -404,6 +430,7 @@ export const translations = {
     },
     overlay: {
       recording: "Recording...",
+      loading_model: "Loading model...",
       processing: "Processing...",
       error_no_mic: "No microphone access",
       error_short: "Speech not recognized",
@@ -428,6 +455,8 @@ export const translations = {
       "server-unavailable": "The update server is temporarily unavailable.",
       "invalid-signature": "The update file failed signature validation.",
       "error": "Error while checking for updates.",
+      "see_github": "See ",
+      "release_notes_github": "full release notes on GitHub"
     }
   }
 };

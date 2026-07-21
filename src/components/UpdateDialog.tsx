@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
-import { Language } from "../i18n";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { Language, t } from "../i18n";
 
 interface UpdateDialogProps {
   update: Update;
@@ -65,6 +66,15 @@ export function UpdateDialog({ update, lang, onClose }: UpdateDialogProps) {
             ) : (
               <p className="mt-2">{lang === "ru" ? "Доступна новая версия Vispeak." : "A new version of Vispeak is available."}</p>
             )}
+            <p className="text-xs mt-3">
+              {t(lang, "updater_status.see_github")}
+              <button 
+                className="text-accent hover:underline cursor-pointer transition-colors"
+                onClick={() => openUrl(`https://github.com/V2P-Dev/Vispeak/releases/tag/v${update.version}`)}
+              >
+                {t(lang, "updater_status.release_notes_github")}
+              </button>
+            </p>
           </div>
         </div>
 

@@ -32,6 +32,8 @@ export function MainWindow() {
   const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const { update } = useUpdater();
 
+  const [modelStatus, setModelStatus] = useState<"loaded" | "unloaded" | "loading">("loaded");
+
   const fetchModels = async () => {
     const data = await invoke<ModelInfo[]>("get_models");
     setModels(data);
@@ -52,6 +54,12 @@ export function MainWindow() {
       setLang(getLanguage(s.app_language));
     });
 
+    invoke<string>("get_model_status").then(status => {
+      if (status === "loaded" || status === "unloaded" || status === "loading") {
+        setModelStatus(status);
+      }
+    });
+
     fetchModels();
 
     const unlistenPromise = listen<DownloadProgress>("download-progress", (event) => {
@@ -64,8 +72,15 @@ export function MainWindow() {
       }
     });
 
+    const unlistenLoaded = listen("model-loaded", () => setModelStatus("loaded"));
+    const unlistenUnloaded = listen("model-unloaded", () => setModelStatus("unloaded"));
+    const unlistenLoading = listen("model-loading", () => setModelStatus("loading"));
+
     return () => {
       unlistenPromise.then(f => f());
+      unlistenLoaded.then(f => f());
+      unlistenUnloaded.then(f => f());
+      unlistenLoading.then(f => f());
     };
   }, []);
 
@@ -121,8 +136,18 @@ export function MainWindow() {
         <div className="h-20 flex items-center justify-end px-8 shrink-0 w-full z-10">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm font-medium text-secondary">
-              {t(lang, "header.ready")}
-              <span className="w-2 h-2 rounded-full bg-success shadow-[0_0_8px_rgba(126,212,145,0.6)]"></span>
+              {modelStatus === "loaded" && t(lang, "header.ready")}
+              {modelStatus === "unloaded" && t(lang, "header.standby")}
+              {modelStatus === "loading" && t(lang, "header.loading")}
+              <span 
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  modelStatus === "loaded"
+                    ? "bg-success shadow-[0_0_8px_rgba(126,212,145,0.6)]"
+                    : modelStatus === "loading"
+                    ? "bg-processing shadow-[0_0_8px_rgba(77,216,230,0.6)] animate-pulse"
+                    : "bg-secondary/60 shadow-none"
+                }`}
+              />
             </div>
             
             <div className="px-3 py-1.5 border border-border/80 rounded-full text-xs font-semibold tracking-wider text-secondary bg-surface shadow-sm">

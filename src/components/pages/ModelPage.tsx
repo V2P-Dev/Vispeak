@@ -34,9 +34,9 @@ const MODEL_TAGS: Record<string, string[]> = {
   "small": ["Punctuation", "Multilingual"],
   "medium": ["Punctuation", "Multilingual"],
   "large-v3-turbo": ["Punctuation", "Multilingual", "Максимальное качество"],
-  "parakeet": ["Multilingual"],
+  "parakeet": ["Multilingual", "Recommended"],
   "canary": ["Multilingual"],
-  "gigaam": ["Punctuation", "Russian"],
+  "gigaam": ["Punctuation", "Russian", "Recommended"],
   "nemotron": ["Punctuation", "Multilingual"],
   "qwen": ["Punctuation", "Multilingual"]
 };
@@ -87,12 +87,17 @@ export function ModelPage({ lang, models, downloading, progressMap, onDownload, 
       </div>
 
       {(() => {
-        const activeModel = models.find(m => m.is_active);
         const recommendedIds = ["parakeet", "gigaam"];
-        const remainingModels = models.filter(m => !m.is_active);
         
-        const recommendedModels = remainingModels.filter(m => recommendedIds.includes(m.id));
-        const otherModels = remainingModels.filter(m => !recommendedIds.includes(m.id));
+        const groupModels = (list: ModelInfo[]) => {
+          const rec = list.filter(m => recommendedIds.includes(m.id));
+          const oth = list.filter(m => !recommendedIds.includes(m.id));
+          return [...rec, ...oth];
+        };
+
+        const activeModel = models.find(m => m.is_active);
+        const downloadedModels = groupModels(models.filter(m => !m.is_active && m.is_downloaded));
+        const availableModels = groupModels(models.filter(m => !m.is_active && !m.is_downloaded));
 
         const renderCard = (m: ModelInfo) => {
           const isDownloading = downloading[m.id];
@@ -128,7 +133,7 @@ export function ModelPage({ lang, models, downloading, progressMap, onDownload, 
                     </div>
                   )}
                   {(MODEL_TAGS[m.id] || []).map(tag => (
-                    <div key={tag} className="px-3 py-1.5 rounded-full bg-border/60 text-secondary text-[11px] font-medium tracking-wide">
+                    <div key={tag} className={`px-3 py-1.5 rounded-full ${tag === 'Recommended' ? 'bg-accent/10 text-accent font-semibold border border-accent/20' : 'bg-border/60 text-secondary'} text-[11px] font-medium tracking-wide`}>
                       {t(lang, `model.tags.${tag}`)}
                     </div>
                   ))}
@@ -246,25 +251,28 @@ export function ModelPage({ lang, models, downloading, progressMap, onDownload, 
         return (
           <div className="flex flex-col gap-8">
             {activeModel && (
-              <div className="flex flex-col gap-5">
-                {renderCard(activeModel)}
-              </div>
-            )}
-            
-            {recommendedModels.length > 0 && (
               <div>
-                <h3 className="text-xl font-bold text-primary mb-4">{t(lang, "model.recommended")}</h3>
+                <h3 className="text-xl font-bold text-primary mb-4">{t(lang, "model.status_active")}</h3>
                 <div className="flex flex-col gap-5">
-                  {recommendedModels.map(renderCard)}
+                  {renderCard(activeModel)}
                 </div>
               </div>
             )}
             
-            {otherModels.length > 0 && (
+            {downloadedModels.length > 0 && (
               <div>
-                <h3 className="text-xl font-bold text-primary mb-4">{t(lang, "model.others")}</h3>
+                <h3 className="text-xl font-bold text-primary mb-4">{t(lang, "model.status_downloaded")}</h3>
                 <div className="flex flex-col gap-5">
-                  {otherModels.map(renderCard)}
+                  {downloadedModels.map(renderCard)}
+                </div>
+              </div>
+            )}
+            
+            {availableModels.length > 0 && (
+              <div>
+                <h3 className="text-xl font-bold text-primary mb-4">{t(lang, "model.status_available")}</h3>
+                <div className="flex flex-col gap-5">
+                  {availableModels.map(renderCard)}
                 </div>
               </div>
             )}

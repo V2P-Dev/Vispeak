@@ -55,6 +55,12 @@ pub struct Settings {
     pub theme: String,
     #[serde(default = "default_history_limit")]
     pub history_limit: u32,
+    #[serde(default = "default_auto_unload_idle_minutes")]
+    pub auto_unload_idle_minutes: u32,
+}
+
+fn default_auto_unload_idle_minutes() -> u32 {
+    0
 }
 
 fn default_push_to_talk() -> bool {
@@ -117,6 +123,7 @@ impl Default for Settings {
             app_language: default_app_language(),
             theme: default_theme(),
             history_limit: default_history_limit(),
+            auto_unload_idle_minutes: default_auto_unload_idle_minutes(),
         }
     }
 }
@@ -208,10 +215,22 @@ pub fn get_active_model() -> Option<String> {
 }
 
 #[tauri::command]
-pub fn set_active_model(model_id: String) -> Result<(), String> {
+pub fn get_model_status() -> String {
+    let settings = load_settings();
+    if let Some(active_id) = &settings.active_model {
+        if crate::transcribe::is_model_loaded(active_id) {
+            return "loaded".to_string();
+        }
+    }
+    "unloaded".to_string()
+}
+
+#[tauri::command]
+pub fn set_active_model(app: tauri::AppHandle, model_id: String) -> Result<(), String> {
     let mut settings = load_settings();
     settings.active_model = Some(model_id);
     save_settings(&settings)?;
+    crate::transcribe::unload_model(&app);
     Ok(())
 }
 
@@ -232,18 +251,22 @@ pub fn update_settings(new_settings: Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn update_single_setting(key: String, value: serde_json::Value) -> Result<(), String> {
+pub fn update_single_setting(app: tauri::AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
     let _guard = SETTINGS_LOCK.lock().unwrap();
 
     let settings = load_settings();
     let mut val = serde_json::to_value(&settings).map_err(|e| e.to_string())?;
 
     if let Some(obj) = val.as_object_mut() {
-        obj.insert(key, value);
+        obj.insert(key.clone(), value);
     }
 
     let new_settings: Settings = serde_json::from_value(val).map_err(|e| e.to_string())?;
     save_settings(&new_settings)?;
+
+    if key == "auto_unload_idle_minutes" || key == "active_model" {
+        crate::transcribe::unload_model(&app);
+    }
 
     crate::history::enforce_limit(new_settings.history_limit);
     Ok(())

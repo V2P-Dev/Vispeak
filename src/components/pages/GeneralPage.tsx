@@ -23,6 +23,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
   const [historySizeMb, setHistorySizeMb] = useState(0);
   const [skin, setSkin] = useState<"full" | "compact" | "mini" | string>("full");
   const [position, setPosition] = useState<string>("bottom-center");
+  const [autoUnload, setAutoUnload] = useState<number>(0);
 
   const [appLanguage, setAppLanguage] = useState<string>("system");
   const [theme, setTheme] = useState<string>("system");
@@ -59,6 +60,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
       if (s.history_limit !== undefined) setHistoryLimit(s.history_limit);
       if (s.overlay_skin) setSkin(s.overlay_skin);
       if (s.overlay_position) setPosition(s.overlay_position);
+      if (s.auto_unload_idle_minutes !== undefined) setAutoUnload(s.auto_unload_idle_minutes);
       if (s.app_language) setAppLanguage(s.app_language);
       if (s.theme) setTheme(s.theme); else setTheme("system");
     });
@@ -398,6 +400,44 @@ export function GeneralPage({ lang }: GeneralPageProps) {
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${duckAudio ? 'bg-accent' : 'bg-border'}`}>
               <div className={`w-4 h-4 bg-white rounded-full transition-transform ${duckAudio ? 'translate-x-5' : 'translate-x-0'}`} />
+            </div>
+          </div>
+        </div>
+
+        {/* Free memory when idle */}
+        <div className="p-5 bg-surface border border-border rounded-2xl flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 group min-w-0">
+              <span className="text-base font-medium text-primary truncate">
+                {t(lang, "general.auto_unload")}
+              </span>
+              <div className="relative flex items-center justify-center">
+                <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-surface border border-border text-primary text-xs rounded-lg w-64 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 whitespace-normal">
+                  {t(lang, "general.auto_unload_desc")}
+                </div>
+              </div>
+            </div>
+            <div className="relative w-48 shrink-0">
+              <select 
+                value={autoUnload}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  setAutoUnload(val);
+                  updateSetting("auto_unload_idle_minutes", val);
+                }}
+                className="w-full appearance-none h-10 px-4 bg-window border border-border rounded-xl text-primary text-sm font-medium hover:border-border/80 focus:border-accent focus:outline-none transition-colors"
+              >
+                <option value={0}>{t(lang, "general.auto_unload_never")}</option>
+                <option value={1}>{t(lang, "general.auto_unload_1min")}</option>
+                <option value={5}>{t(lang, "general.auto_unload_5min")}</option>
+                <option value={15}>{t(lang, "general.auto_unload_15min")}</option>
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </div>
             </div>
           </div>
         </div>

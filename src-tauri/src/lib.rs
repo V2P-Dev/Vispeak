@@ -356,6 +356,7 @@ pub fn run() {
             models::download_model,
             models::delete_model,
             settings::get_active_model,
+            settings::get_model_status,
             settings::set_active_model,
             settings::get_settings,
             settings::update_settings,

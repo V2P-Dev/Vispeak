@@ -70,6 +70,13 @@ pub fn start_recording(app: AppHandle) -> Result<(), String> {
     }
 
     let settings = crate::settings::load_settings();
+    if let Some(model_id) = &settings.active_model {
+        if !crate::transcribe::is_model_loaded(model_id) {
+            let _ = app.emit("model-loading", ());
+            crate::transcribe::preload_model(&app, model_id.clone());
+        }
+    }
+
     if settings.sound_cues {
         play_cue(true);
     }
