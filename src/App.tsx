@@ -16,13 +16,7 @@ function App() {
     const appWindow = getCurrentWindow();
     setWindowLabel(appWindow.label);
 
-    if (appWindow.label === "overlay") {
-      // INTENTIONAL: Overlay indicator stays ALWAYS DARK regardless of the theme choice.
-      document.documentElement.setAttribute("data-theme", "dark");
-      return;
-    }
-
-    // For MainWindow, fetch initial theme setting from Rust backend
+    // For MainWindow and OverlayWindow, fetch initial theme setting from Rust backend
     invoke<any>("get_settings").then((settings) => {
       const t = settings.theme || "system";
       setThemeSetting(t);
@@ -58,9 +52,8 @@ function App() {
   if (!windowLabel) return null;
 
   if (windowLabel === "overlay") {
-    // INTENTIONAL: Overlay indicator stays ALWAYS DARK regardless of the theme choice.
     return (
-      <div data-theme="dark" className="w-full h-full">
+      <div className="w-full h-full text-primary transition-colors duration-150">
         <OverlayWindow />
       </div>
     );

@@ -365,6 +365,7 @@ pub fn run() {
             hotkeys::update_cancel_hotkey,
             hotkeys::update_push_to_talk,
             update_tray_lang,
+            update_tray_tooltip,
             restart_app,
             history::get_history,
             history::delete_history_record,
@@ -376,6 +377,13 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn update_tray_tooltip(app: tauri::AppHandle, tooltip: String) {
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_tooltip(Some(tooltip));
+    }
 }
 
 #[tauri::command]

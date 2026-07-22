@@ -438,6 +438,15 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                     }
                 }
                 HotkeyAction::StartRecording => {
+                    let app_info = crate::paste::get_active_app_info();
+                    let target_hwnd_hwnd = app_info
+                        .as_ref()
+                        .map(|info| windows::Win32::Foundation::HWND(info.hwnd as _));
+
+                    // Capture caret position IMMEDIATELY right at keypress before any delays/model loading
+                    let (caret_pos, caret_method, caret_trace) =
+                        crate::caret_position::get_caret_position(target_hwnd_hwnd);
+
                     let active_model = crate::settings::load_settings().active_model;
                     let mut can_start = false;
                     if let Some(ref id) = active_model {
@@ -448,17 +457,34 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                     }
 
                     if can_start {
-                        if let Some(app_info) = crate::paste::get_active_app_info() {
-                            {
-                                let state_arc = app_clone.state::<Arc<Mutex<AudioState>>>();
-                                let mut state = state_arc.inner().lock().unwrap();
-                                state.target_hwnd = Some(app_info.hwnd);
-                                state.app_info = Some(app_info.clone());
+                        {
+                            let state_arc = app_clone.state::<Arc<Mutex<AudioState>>>();
+                            let mut state = state_arc.inner().lock().unwrap();
+                            if let Some(ref info) = app_info {
+                                state.target_hwnd = Some(info.hwnd);
+                                state.app_info = Some(info.clone());
+                            } else {
+                                state.target_hwnd = None;
+                                state.app_info = None;
                             }
-                            let _ = app_clone.emit("target-app", app_info);
+                            state.caret_pos = caret_pos;
+                            state.caret_method = caret_method;
+                            state.caret_trace = caret_trace;
                         }
+
+                        if let Some(ref info) = app_info {
+                            let _ = app_clone.emit("target-app", info.clone());
+                        }
+
                         let _ = start_recording(app_clone);
                     } else {
+                        {
+                            let state_arc = app_clone.state::<Arc<Mutex<AudioState>>>();
+                            let mut state = state_arc.inner().lock().unwrap();
+                            state.caret_pos = caret_pos;
+                            state.caret_method = caret_method;
+                            state.caret_trace = caret_trace;
+                        }
                         let _ = app_clone.emit("show-error", "err_no_model_selected".to_string());
                         crate::show_overlay(app_clone.clone());
                     }

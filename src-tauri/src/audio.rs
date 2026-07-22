@@ -49,7 +49,6 @@ pub fn start_recording(app: AppHandle) -> Result<(), String> {
     let (stop_tx, stop_rx) = unbounded();
     state.is_recording = true;
     state.stop_tx = Some(stop_tx);
-    let target_hwnd_opt = state.target_hwnd;
     drop(state);
 
     if had_old_worker {
@@ -58,16 +57,6 @@ pub fn start_recording(app: AppHandle) -> Result<(), String> {
 
     let app_clone = app.clone();
     spawn_audio_thread(app_clone, stop_rx, false);
-
-    let (caret_pos, caret_method, caret_trace) = crate::caret_position::get_caret_position(
-        target_hwnd_opt.map(|h| windows::Win32::Foundation::HWND(h as _)),
-    );
-    {
-        let mut state = state_arc.inner().lock().unwrap();
-        state.caret_pos = caret_pos;
-        state.caret_method = caret_method;
-        state.caret_trace = caret_trace;
-    }
 
     let settings = crate::settings::load_settings();
     if let Some(model_id) = &settings.active_model {

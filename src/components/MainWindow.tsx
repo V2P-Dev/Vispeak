@@ -84,6 +84,21 @@ export function MainWindow() {
     };
   }, []);
 
+  // Sync tray tooltip with active model and model status
+  useEffect(() => {
+    const activeModel = models.find(m => m.is_active);
+    let statusText = "";
+    if (modelStatus === "loaded") statusText = t(lang, "header.ready");
+    else if (modelStatus === "unloaded") statusText = t(lang, "header.standby");
+    else if (modelStatus === "loading") statusText = t(lang, "header.loading");
+
+    const tooltip = activeModel
+      ? `${activeModel.name} — ${statusText}`
+      : t(lang, "errors.err_no_model_selected");
+
+    invoke("update_tray_tooltip", { tooltip }).catch(console.error);
+  }, [models, modelStatus, lang]);
+
   // Re-fetch settings when active page changes, or periodically if we wanted to
   useEffect(() => {
     fetchSettings();

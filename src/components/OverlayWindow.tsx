@@ -1,6 +1,4 @@
-// INTENTIONAL: Overlay indicator stays ALWAYS DARK regardless of the theme choice.
-// The capsule is displayed on top of arbitrary desktop windows; a dark background with colored glow
-// reads universally well, and status colors (red/cyan/green) are part of the core product language.
+// The capsule is displayed on top of arbitrary desktop windows; status colors (red/cyan/green) are part of the core product language.
 import { useEffect, useState, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -238,7 +236,7 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
   let glowClass = "border-border/50 shadow-lg";
   let footerText = t(lang, "overlay.cancel");
   if (isRecording) {
-    glowClass = "border-accent/40 shadow-[0_0_24px_rgba(255,85,51,0.3)]";
+    glowClass = "border-accent/40 animate-glow-pulse";
   } else if (isProcessing) {
     glowClass = "border-processing/40 shadow-[0_0_24px_rgba(77,216,230,0.3)]";
     footerText = t(lang, "overlay.processing");
@@ -329,7 +327,7 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
   let glowClass = "border-border/50 shadow-lg";
 
   if (isRecording) {
-    glowClass = "border-accent/40 shadow-[0_0_24px_rgba(255,85,51,0.3)]";
+    glowClass = "border-accent/40 animate-glow-pulse";
   } else if (isProcessing) {
     glowClass = "border-processing/40 shadow-[0_0_24px_rgba(77,216,230,0.3)]";
   } else if (isSuccess) {
@@ -416,7 +414,7 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
   let glowClass = "border-border/50 shadow-lg";
 
   if (isRecording) {
-    glowClass = "border-accent/40 shadow-[0_0_24px_rgba(255,85,51,0.3)]";
+    glowClass = "border-accent/40 animate-glow-pulse";
   } else if (isProcessing) {
     glowClass = "border-processing/40 shadow-[0_0_24px_rgba(77,216,230,0.3)]";
   } else if (isSuccess) {
