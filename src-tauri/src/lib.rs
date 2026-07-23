@@ -63,18 +63,18 @@ pub fn show_overlay(app: tauri::AppHandle) {
         let is_compact = settings.overlay_skin == "compact";
 
         let logical_width = if is_mini {
-            144.0
+            134.0
         } else if is_compact {
-            268.0
+            247.0
         } else {
-            392.0
+            359.0
         };
         let logical_height = if is_mini {
             82.0
         } else if is_compact {
-            96.0
+            92.0
         } else {
-            162.0
+            151.0
         };
         let logical_size = tauri::LogicalSize::new(logical_width, logical_height);
         let _ = window.set_size(logical_size);
