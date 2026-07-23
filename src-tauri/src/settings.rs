@@ -251,7 +251,11 @@ pub fn update_settings(new_settings: Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn update_single_setting(app: tauri::AppHandle, key: String, value: serde_json::Value) -> Result<(), String> {
+pub fn update_single_setting(
+    app: tauri::AppHandle,
+    key: String,
+    value: serde_json::Value,
+) -> Result<(), String> {
     let _guard = SETTINGS_LOCK.lock().unwrap();
 
     let settings = load_settings();

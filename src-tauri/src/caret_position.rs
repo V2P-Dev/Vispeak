@@ -1,4 +1,5 @@
-use std::sync::mpsc::channel;
+use std::collections::HashSet;
+use std::sync::{mpsc::channel, Mutex, OnceLock};
 use std::time::Duration;
 use windows::Win32::Foundation::{BOOL, HWND, POINT, RECT};
 use windows::Win32::Graphics::Gdi::{
@@ -17,8 +18,8 @@ use windows::Win32::UI::Accessibility::{
     IUIAutomationTextRange, UIA_TextPattern2Id, UIA_TextPatternId,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetGUIThreadInfo, GetWindowRect, GetWindowThreadProcessId, GUITHREADINFO,
-    GetClassNameW, GetWindowTextW,
+    GetClassNameW, GetForegroundWindow, GetGUIThreadInfo, GetWindowRect, GetWindowTextW,
+    GetWindowThreadProcessId, GUITHREADINFO,
 };
 
 // Maximum width (px) for a single-line or small input field (search box, address bar, single-line chat).
@@ -127,7 +128,9 @@ fn get_window_info(hwnd: HWND) -> (String, String, String) {
                 process_id,
             ) {
                 let mut path = [0u16; 1024];
-                let len = windows::Win32::System::ProcessStatus::GetProcessImageFileNameW(hproc, &mut path);
+                let len = windows::Win32::System::ProcessStatus::GetProcessImageFileNameW(
+                    hproc, &mut path,
+                );
                 if len > 0 {
                     let path_str = String::from_utf16_lossy(&path[..len as usize]);
                     if let Some(idx) = path_str.rfind('\\') {
@@ -156,7 +159,10 @@ pub fn validate_caret_rect(
         return Err(format!("invalid width: {}", width));
     }
     if height <= 0 || height > 3000 {
-        return Err(format!("invalid height: {} (must be 0 < h <= 3000)", height));
+        return Err(format!(
+            "invalid height: {} (must be 0 < h <= 3000)",
+            height
+        ));
     }
 
     let mut win_rc: RECT = unsafe { std::mem::zeroed() };
@@ -187,8 +193,12 @@ pub fn validate_caret_rect(
     }
 
     if has_win_rc {
-        if (rect.left == 0 && rect.top == 0) || (rect.left == win_rc.left && rect.top == win_rc.top) {
-            return Err(format!("[CARET SUSPECT] rect {:?} at 0,0 or matches window top-left {:?}", rect, win_rc));
+        if (rect.left == 0 && rect.top == 0) || (rect.left == win_rc.left && rect.top == win_rc.top)
+        {
+            return Err(format!(
+                "[CARET SUSPECT] rect {:?} at 0,0 or matches window top-left {:?}",
+                rect, win_rc
+            ));
         }
     } else if rect.left == 0 && rect.top == 0 {
         return Err(format!("[CARET SUSPECT] rect {:?} at 0,0", rect));
@@ -209,10 +219,7 @@ pub fn validate_caret_rect(
             };
             let hmon_pt = MonitorFromPoint(pt, MONITOR_DEFAULTTONULL);
             if hmon_pt.0.is_null() {
-                return Err(format!(
-                    "rect {:?} is outside all monitors",
-                    rect
-                ));
+                return Err(format!("rect {:?} is outside all monitors", rect));
             }
         }
     }
@@ -227,13 +234,14 @@ pub fn try_get_uia_caret_rect(target_hwnd: HWND) -> (Option<CaretRect>, String) 
         let initialized = hr.is_ok();
 
         let res = (|| -> Option<CaretRect> {
-            let automation: IUIAutomation = match CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
-                Ok(a) => a,
-                Err(e) => {
-                    log.push_str(&format!("Failed CoCreateInstance: {:?}\n", e));
-                    return None;
-                }
-            };
+            let automation: IUIAutomation =
+                match CoCreateInstance(&CUIAutomation, None, CLSCTX_INPROC_SERVER) {
+                    Ok(a) => a,
+                    Err(e) => {
+                        log.push_str(&format!("Failed CoCreateInstance: {:?}\n", e));
+                        return None;
+                    }
+                };
             let mut attempt = 0;
             loop {
                 let element = match automation.GetFocusedElement() {
@@ -244,64 +252,64 @@ pub fn try_get_uia_caret_rect(target_hwnd: HWND) -> (Option<CaretRect>, String) 
                     }
                 };
 
-            let mut range_opt: Option<IUIAutomationTextRange> = None;
-            let mut pattern_source = "none";
+                let mut range_opt: Option<IUIAutomationTextRange> = None;
+                let mut pattern_source = "none";
 
-            if let Ok(pattern2) =
-                element.GetCurrentPatternAs::<IUIAutomationTextPattern2>(UIA_TextPattern2Id)
-            {
-                let mut is_active = BOOL(0);
-                if let Ok(r) = pattern2.GetCaretRange(&mut is_active) {
-                    range_opt = Some(r);
-                    pattern_source = "TextPattern2.GetCaretRange";
-                }
-            }
-
-            if range_opt.is_none() {
-                if let Ok(pattern) =
-                    element.GetCurrentPatternAs::<IUIAutomationTextPattern>(UIA_TextPatternId)
+                if let Ok(pattern2) =
+                    element.GetCurrentPatternAs::<IUIAutomationTextPattern2>(UIA_TextPattern2Id)
                 {
-                    if let Ok(selection) = pattern.GetSelection() {
-                        if let Ok(len) = selection.Length() {
-                            if len > 0 {
-                                if let Ok(r) = selection.GetElement(0) {
-                                    range_opt = Some(r);
-                                    pattern_source = "TextPattern.GetSelection";
+                    let mut is_active = BOOL(0);
+                    if let Ok(r) = pattern2.GetCaretRange(&mut is_active) {
+                        range_opt = Some(r);
+                        pattern_source = "TextPattern2.GetCaretRange";
+                    }
+                }
+
+                if range_opt.is_none() {
+                    if let Ok(pattern) =
+                        element.GetCurrentPatternAs::<IUIAutomationTextPattern>(UIA_TextPatternId)
+                    {
+                        if let Ok(selection) = pattern.GetSelection() {
+                            if let Ok(len) = selection.Length() {
+                                if len > 0 {
+                                    if let Ok(r) = selection.GetElement(0) {
+                                        range_opt = Some(r);
+                                        pattern_source = "TextPattern.GetSelection";
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            let range = match range_opt {
-                Some(r) => r,
-                None => {
-                    log.push_str("No TextPattern available\n");
-                    return None;
-                }
-            };
+                let range = match range_opt {
+                    Some(r) => r,
+                    None => {
+                        log.push_str("No TextPattern available\n");
+                        return None;
+                    }
+                };
 
-            let mut slice_data: Vec<f64> = Vec::new();
-            if let Ok(psa) = range.GetBoundingRectangles() {
-                let data = safearray_to_vec_f64(psa);
-                if data.len() >= 4 {
-                    slice_data.extend_from_slice(&data[0..4]);
+                let mut slice_data: Vec<f64> = Vec::new();
+                if let Ok(psa) = range.GetBoundingRectangles() {
+                    let data = safearray_to_vec_f64(psa);
+                    if data.len() >= 4 {
+                        slice_data.extend_from_slice(&data[0..4]);
+                    }
                 }
-            }
 
-            if slice_data.is_empty()
-                || (slice_data.len() >= 4 && slice_data[2] == 0.0 && slice_data[3] == 0.0)
-            {
-                if let Ok(rect) = element.CurrentBoundingRectangle() {
-                    let left = rect.left as f64;
-                    let top = rect.top as f64;
-                    let width = (rect.right - rect.left) as f64;
-                    let height = (rect.bottom - rect.top) as f64;
-                    slice_data = vec![left, top, width, height];
-                    pattern_source = "element bounds fallback";
+                if slice_data.is_empty()
+                    || (slice_data.len() >= 4 && slice_data[2] == 0.0 && slice_data[3] == 0.0)
+                {
+                    if let Ok(rect) = element.CurrentBoundingRectangle() {
+                        let left = rect.left as f64;
+                        let top = rect.top as f64;
+                        let width = (rect.right - rect.left) as f64;
+                        let height = (rect.bottom - rect.top) as f64;
+                        slice_data = vec![left, top, width, height];
+                        pattern_source = "element bounds fallback";
+                    }
                 }
-            }
 
                 if slice_data.len() >= 4 {
                     let left = slice_data[0];
@@ -322,11 +330,24 @@ pub fn try_get_uia_caret_rect(target_hwnd: HWND) -> (Option<CaretRect>, String) 
                         continue;
                     }
 
-                    log.push_str(&format!("2. UIA branch: SUCCESS (source={})\n", pattern_source));
-                    
-                    let classification_reason = format!("w={}, h={}", (raw_rect.right - raw_rect.left), (raw_rect.bottom - raw_rect.top));
-                    log.push_str(&format!("3. Raw Rect: left={}, top={}, right={}, bottom={}\n", raw_rect.left, raw_rect.top, raw_rect.right, raw_rect.bottom));
-                    log.push_str(&format!("5. Classification: {:?} (reason: {})\n", raw_rect.kind, classification_reason));
+                    log.push_str(&format!(
+                        "2. UIA branch: SUCCESS (source={})\n",
+                        pattern_source
+                    ));
+
+                    let classification_reason = format!(
+                        "w={}, h={}",
+                        (raw_rect.right - raw_rect.left),
+                        (raw_rect.bottom - raw_rect.top)
+                    );
+                    log.push_str(&format!(
+                        "3. Raw Rect: left={}, top={}, right={}, bottom={}\n",
+                        raw_rect.left, raw_rect.top, raw_rect.right, raw_rect.bottom
+                    ));
+                    log.push_str(&format!(
+                        "5. Classification: {:?} (reason: {})\n",
+                        raw_rect.kind, classification_reason
+                    ));
 
                     if let Err(reason) = validate_caret_rect(&raw_rect, target_hwnd, "uia") {
                         if reason.contains("[CARET SUSPECT]") {
@@ -340,7 +361,10 @@ pub fn try_get_uia_caret_rect(target_hwnd: HWND) -> (Option<CaretRect>, String) 
                     log.push_str("4. Validation: PASSED\n");
                     return Some(raw_rect);
                 } else {
-                    log.push_str(&format!("Invalid slice_data length: {}\n", slice_data.len()));
+                    log.push_str(&format!(
+                        "Invalid slice_data length: {}\n",
+                        slice_data.len()
+                    ));
                     return None;
                 }
             }
@@ -407,10 +431,20 @@ pub fn try_get_win32_caret_rect(target_hwnd: Option<HWND>) -> (Option<CaretRect>
                     );
 
                     log.push_str("2. Win32 branch: SUCCESS\n");
-                    
-                    let classification_reason = format!("w={}, h={}", (raw_rect.right - raw_rect.left), (raw_rect.bottom - raw_rect.top));
-                    log.push_str(&format!("3. Raw Rect: left={}, top={}, right={}, bottom={}\n", raw_rect.left, raw_rect.top, raw_rect.right, raw_rect.bottom));
-                    log.push_str(&format!("5. Classification: {:?} (reason: {})\n", raw_rect.kind, classification_reason));
+
+                    let classification_reason = format!(
+                        "w={}, h={}",
+                        (raw_rect.right - raw_rect.left),
+                        (raw_rect.bottom - raw_rect.top)
+                    );
+                    log.push_str(&format!(
+                        "3. Raw Rect: left={}, top={}, right={}, bottom={}\n",
+                        raw_rect.left, raw_rect.top, raw_rect.right, raw_rect.bottom
+                    ));
+                    log.push_str(&format!(
+                        "5. Classification: {:?} (reason: {})\n",
+                        raw_rect.kind, classification_reason
+                    ));
 
                     if let Err(reason) = validate_caret_rect(&raw_rect, hwnd, "win32") {
                         if reason.contains("[CARET SUSPECT]") {
@@ -427,7 +461,10 @@ pub fn try_get_win32_caret_rect(target_hwnd: Option<HWND>) -> (Option<CaretRect>
                     log.push_str("2. Win32 branch: ClientToScreen failed\n");
                 }
             } else {
-                log.push_str(&format!("2. Win32 branch: Invalid rcCaret dimensions: {:?}\n", rc));
+                log.push_str(&format!(
+                    "2. Win32 branch: Invalid rcCaret dimensions: {:?}\n",
+                    rc
+                ));
             }
         } else {
             log.push_str("2. Win32 branch: GetGUIThreadInfo failed\n");
@@ -436,9 +473,25 @@ pub fn try_get_win32_caret_rect(target_hwnd: Option<HWND>) -> (Option<CaretRect>
     }
 }
 
+static SEEN_HWNDS: OnceLock<Mutex<HashSet<isize>>> = OnceLock::new();
+
+fn is_hwnd_seen(hwnd: isize) -> bool {
+    let mut set = SEEN_HWNDS
+        .get_or_init(|| Mutex::new(HashSet::new()))
+        .lock()
+        .unwrap();
+    if set.contains(&hwnd) {
+        true
+    } else {
+        set.insert(hwnd);
+        false
+    }
+}
+
 pub fn get_caret_position(target_hwnd: Option<HWND>) -> (Option<CaretRect>, CaretMethod, String) {
     let hwnd = unsafe { target_hwnd.unwrap_or_else(|| GetForegroundWindow()) };
     let hwnd_val = hwnd.0 as usize;
+    let seen = is_hwnd_seen(hwnd_val as isize);
 
     let (title, class, process) = get_window_info(hwnd);
 
@@ -447,62 +500,89 @@ pub fn get_caret_position(target_hwnd: Option<HWND>) -> (Option<CaretRect>, Care
         process, class, title
     );
 
-    let (tx, rx) = channel();
-    std::thread::spawn(move || {
-        let res = try_get_uia_caret_rect(HWND(hwnd_val as *mut _));
-        let _ = tx.send(res);
-    });
+    let max_attempts = if seen { 1 } else { 3 };
+    let mut attempt = 0;
 
-    let mut selected_rect = None;
-    let mut selected_method = CaretMethod::Fallback;
-    let mut uia_is_caret = false;
+    let mut final_selected_rect = None;
+    let mut final_selected_method = CaretMethod::Fallback;
 
-    if let Ok((res_opt, log)) = rx.recv_timeout(Duration::from_millis(150)) {
-        if let Some(rect) = res_opt {
-            trace.push_str(&log);
-            selected_rect = Some(rect);
-            selected_method = CaretMethod::Uia;
-            if rect.kind == CaretKind::Caret {
-                uia_is_caret = true;
-            }
-        } else {
-            trace.push_str("2. UIA branch: Failed. ");
-            trace.push_str(&log);
+    while attempt < max_attempts {
+        attempt += 1;
+        if attempt == 2 {
+            trace.push_str("\n[RETRY] Attempt 2 for new HWND (waiting 150ms)...\n");
+            std::thread::sleep(Duration::from_millis(150));
+        } else if attempt == 3 {
+            trace.push_str("\n[RETRY] Attempt 3 for new HWND (waiting 300ms)...\n");
+            std::thread::sleep(Duration::from_millis(300));
         }
-    } else {
-        trace.push_str("2. UIA branch: Failed (timeout 150ms)\n");
-    }
 
-    if selected_rect.is_none() || !uia_is_caret {
-        let (res_opt, log) = try_get_win32_caret_rect(Some(hwnd));
-        if let Some(rect) = res_opt {
-            if rect.kind == CaretKind::Caret {
-                if selected_rect.is_some() {
-                    trace.push_str("2. UIA yielded Field/Area, but Win32 found Caret! Preferring Win32.\n");
-                }
+        let (tx, rx) = channel();
+        std::thread::spawn(move || {
+            let res = try_get_uia_caret_rect(HWND(hwnd_val as *mut _));
+            let _ = tx.send(res);
+        });
+
+        let mut selected_rect = None;
+        let mut selected_method = CaretMethod::Fallback;
+        let mut uia_is_caret = false;
+
+        if let Ok((res_opt, log)) = rx.recv_timeout(Duration::from_millis(150)) {
+            if let Some(rect) = res_opt {
                 trace.push_str(&log);
                 selected_rect = Some(rect);
-                selected_method = CaretMethod::Win32;
+                selected_method = CaretMethod::Uia;
+                if rect.kind == CaretKind::Caret {
+                    uia_is_caret = true;
+                }
             } else {
-                trace.push_str("2. Win32 branch: Fallback attempted, but also not Caret.\n");
+                trace.push_str("2. UIA branch: Failed. ");
                 trace.push_str(&log);
             }
         } else {
-            if selected_rect.is_some() {
-                trace.push_str("2. Win32 branch: Fallback failed. Keeping UIA Field/Area.\n");
-            } else {
-                trace.push_str(&log);
-            }
+            trace.push_str("2. UIA branch: Failed (timeout 150ms)\n");
         }
-    } else {
-        trace.push_str("2. Win32 branch: Skipped (UIA found Caret)\n");
+
+        if selected_rect.is_none() || !uia_is_caret {
+            let (res_opt, log) = try_get_win32_caret_rect(Some(hwnd));
+            if let Some(rect) = res_opt {
+                if rect.kind == CaretKind::Caret {
+                    if selected_rect.is_some() {
+                        trace.push_str(
+                            "2. UIA yielded Field/Area, but Win32 found Caret! Preferring Win32.\n",
+                        );
+                    }
+                    trace.push_str(&log);
+                    selected_rect = Some(rect);
+                    selected_method = CaretMethod::Win32;
+                } else {
+                    trace.push_str("2. Win32 branch: Fallback attempted, but also not Caret.\n");
+                    trace.push_str(&log);
+                }
+            } else {
+                if selected_rect.is_some() {
+                    trace.push_str("2. Win32 branch: Fallback failed. Keeping UIA Field/Area.\n");
+                } else {
+                    trace.push_str(&log);
+                }
+            }
+        } else {
+            trace.push_str("2. Win32 branch: Skipped (UIA found Caret)\n");
+        }
+
+        final_selected_rect = selected_rect;
+        final_selected_method = selected_method;
+
+        if final_selected_rect.is_some() {
+            trace.push_str(&format!("-> Success on attempt {}\n", attempt));
+            break;
+        }
     }
 
-    if selected_rect.is_none() {
+    if final_selected_rect.is_none() {
         trace.push_str("2. Fallback branch: Selected\n");
     }
 
-    (selected_rect, selected_method, trace)
+    (final_selected_rect, final_selected_method, trace)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

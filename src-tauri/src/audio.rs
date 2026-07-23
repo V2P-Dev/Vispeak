@@ -66,13 +66,6 @@ pub fn start_recording(app: AppHandle) -> Result<(), String> {
         }
     }
 
-    if settings.sound_cues {
-        play_cue(true);
-    }
-
-    let _ = app.emit("recording-started", ());
-    crate::show_overlay(app.clone());
-
     Ok(())
 }
 
@@ -82,34 +75,40 @@ pub fn play_cue(start: bool) {
             if let Ok(sink) = rodio::Sink::try_new(&stream_handle) {
                 let sample_rate = 44100u32;
 
-                // Two notes: start goes up (C5 -> E5), stop goes down (E5 -> C5)
-                let freqs = if start {
-                    [(523.25, 60u32), (659.25, 80u32)]
+                // Премиальный звук: каждая нота — это 3 слегка расстроенных слоя (chorus),
+                // создающих эффект глубины и "дорогого" звучания
+                let notes: [(f32, u32); 2] = if start {
+                    [(523.25, 100), (659.25, 130)] // C5 -> E5
                 } else {
-                    [(659.25, 60u32), (523.25, 80u32)]
+                    [(659.25, 100), (523.25, 130)] // E5 -> C5
                 };
 
                 let mut samples = Vec::new();
 
-                for (freq, dur_ms) in freqs {
+                for (base_freq, dur_ms) in notes {
                     let num_samples = (sample_rate * dur_ms) / 1000;
-                    let mut phase = 0.0;
+                    let freqs = [base_freq, base_freq + 1.5, base_freq - 1.5];
+                    let mut phases = [0.0f32; 3];
+
                     for i in 0..num_samples {
                         let t = i as f32 / num_samples as f32;
-                        phase += freq * 2.0 * std::f32::consts::PI / sample_rate as f32;
 
-                        let sample = phase.sin();
+                        let mut sample = 0.0f32;
+                        for (k, &freq) in freqs.iter().enumerate() {
+                            phases[k] += freq * 2.0 * std::f32::consts::PI / sample_rate as f32;
+                            let weight = if k == 0 { 0.5 } else { 0.25 };
+                            sample += weight * phases[k].sin();
+                        }
 
-                        // Envelope: 3ms attack, then exponential decay
-                        let attack_time = 0.003;
+                        let attack_time = 0.020;
                         let attack_samples = (sample_rate as f32 * attack_time) as u32;
-
-                        let mut env = (-4.0 * t).exp() * (1.0 - t);
+                        let mut env = (-2.2 * t).exp() * (1.0 - t * 0.7);
                         if i < attack_samples {
                             env *= i as f32 / attack_samples as f32;
                         }
 
-                        samples.push((sample * env * 0.1) as f32); // Volume 0.1 is very soft and unobtrusive
+                        // Уровень громкости 0.1, чтобы звук был мягким и ненавязчивым
+                        samples.push(sample * env * 0.1);
                     }
                 }
 
@@ -301,7 +300,9 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
                 state.is_previewing = false;
                 let _ = state.stop_tx.take();
                 if let Some(window) = app_clone.get_webview_window("overlay") {
-                    crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: audio session start failed)");
+                    crate::log_debug(
+                        "[OVERLAY_EVENT] Window HIDE (reason: audio session start failed)",
+                    );
                     let _ = window.hide();
                 }
             }
@@ -526,6 +527,16 @@ fn worker_process(
 
         let sample = match rx.recv_timeout(std::time::Duration::from_millis(10)) {
             Ok(s) => {
+                if total_samples_received == 0 {
+                    if !is_preview {
+                        let _ = app.emit("recording-started", ());
+                        crate::show_overlay(app.clone());
+                        let settings = crate::settings::load_settings();
+                        if settings.sound_cues {
+                            play_cue(true);
+                        }
+                    }
+                }
                 total_samples_received += 1;
                 last_sample_time = std::time::Instant::now();
 

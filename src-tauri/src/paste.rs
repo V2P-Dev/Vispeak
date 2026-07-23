@@ -3,9 +3,7 @@ use enigo::{Enigo, Key, KeyboardControllable};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use windows::Win32::Foundation::HWND;
-use windows::Win32::UI::WindowsAndMessaging::{
-    GetForegroundWindow, GetWindowTextW,
-};
+use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct AppInfo {

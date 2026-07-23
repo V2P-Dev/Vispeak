@@ -17,7 +17,11 @@ use audio::AudioState;
 
 pub fn log_debug(msg: &str) {
     eprintln!("{}", msg);
-    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("vispeak_debug.log") {
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("vispeak_debug.log")
+    {
         use std::io::Write;
         let _ = writeln!(file, "{}", msg);
     }
@@ -36,7 +40,9 @@ pub fn show_overlay(app: tauri::AppHandle) {
 
         let mut mi: MONITORINFO = unsafe { mem::zeroed() };
         mi.cbSize = mem::size_of::<MONITORINFO>() as u32;
-        unsafe { let _ = GetMonitorInfoW(hmonitor, &mut mi); };
+        unsafe {
+            let _ = GetMonitorInfoW(hmonitor, &mut mi);
+        };
 
         let rc_work = mi.rcWork;
         let rc_monitor = mi.rcMonitor;
@@ -79,16 +85,30 @@ pub fn show_overlay(app: tauri::AppHandle) {
         let (caret_pos_opt, _method, mut trace_log) = {
             let state_arc = app.state::<Arc<Mutex<AudioState>>>();
             let state = state_arc.inner().lock().unwrap();
-            (state.caret_pos, state.caret_method, state.caret_trace.clone())
+            (
+                state.caret_pos,
+                state.caret_method,
+                state.caret_trace.clone(),
+            )
         };
 
         let effective_anchor = if is_mini {
             if let Some(rect) = caret_pos_opt {
                 match rect.kind {
-                    crate::caret_position::CaretKind::Caret => { trace_log.push_str("Classification: Caret
-"); Some((rect, "caret")) },
-                    crate::caret_position::CaretKind::Field => { trace_log.push_str("Classification: Field
-"); Some((rect, "field")) },
+                    crate::caret_position::CaretKind::Caret => {
+                        trace_log.push_str(
+                            "Classification: Caret
+",
+                        );
+                        Some((rect, "caret"))
+                    }
+                    crate::caret_position::CaretKind::Field => {
+                        trace_log.push_str(
+                            "Classification: Field
+",
+                        );
+                        Some((rect, "field"))
+                    }
                     crate::caret_position::CaretKind::Area => {
                         use windows::Win32::Foundation::POINT;
                         use windows::Win32::UI::WindowsAndMessaging::GetCursorPos;
@@ -107,12 +127,17 @@ pub fn show_overlay(app: tauri::AppHandle) {
                                 bottom: pt.y,
                                 kind: crate::caret_position::CaretKind::Area,
                             };
-                            trace_log.push_str("Classification: Area (mouse_anchor)
-");
+                            trace_log.push_str(
+                                "Classification: Area (mouse_anchor)
+",
+                            );
                             Some((mouse_rect, "area (mouse_anchor)"))
                         } else {
-                            trace_log.push_str(&format!("Classification: Area -> Fallback (mouse outside area {:?})
-", rect));
+                            trace_log.push_str(&format!(
+                                "Classification: Area -> Fallback (mouse outside area {:?})
+",
+                                rect
+                            ));
                             None
                         }
                     }
@@ -162,8 +187,11 @@ pub fn show_overlay(app: tauri::AppHandle) {
                 &rc_work_caret,
             );
 
-            trace_log.push_str(&format!("6. DPI Scale: {}, Rect: {:?}\n", scale_caret, effective_rect));
-            
+            trace_log.push_str(&format!(
+                "6. DPI Scale: {}, Rect: {:?}\n",
+                scale_caret, effective_rect
+            ));
+
             let dx = pos_res.x - effective_rect.left as f64;
             let dy = pos_res.y - effective_rect.top as f64;
             if dx.abs() > 300.0 || dy.abs() > 300.0 {
@@ -201,7 +229,8 @@ pub fn show_overlay(app: tauri::AppHandle) {
             };
 
             trace_log.push_str(&format!(
-                "6. DPI Scale: {} (fallback window)\n", scale_factor
+                "6. DPI Scale: {} (fallback window)\n",
+                scale_factor
             ));
             trace_log.push_str(&format!(
                 "10. Final Capsule Position: ({}, {}) pos_str='{}' scale={}\n",
@@ -215,23 +244,26 @@ pub fn show_overlay(app: tauri::AppHandle) {
         let hotkey_time_opt = *crate::transcribe::DIAGNOSTIC_HOTKEY_TIME.lock().unwrap();
         if let Some(hotkey_time) = hotkey_time_opt {
             let elapsed_ms = hotkey_time.elapsed().as_millis();
-            trace_log.push_str(&format!("9. Timing: {}ms from hotkey press to overlay show\n", elapsed_ms));
+            trace_log.push_str(&format!(
+                "9. Timing: {}ms from hotkey press to overlay show\n",
+                elapsed_ms
+            ));
         } else {
             trace_log.push_str("9. Timing: unknown (hotkey time not set)\n");
         }
-    
-    crate::log_debug(&format!("{}===================", trace_log));
 
-    let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
-        x_phys.round() as i32,
-        y_phys.round() as i32,
-    )));
-    let _ = window.set_size(logical_size);
-    let _ = window.set_always_on_top(true);
+        crate::log_debug(&format!("{}===================", trace_log));
 
-    crate::log_debug("[OVERLAY_EVENT] Window SHOW (reason: overlay display logic executed)");
-    let _ = window.show();
-}
+        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
+            x_phys.round() as i32,
+            y_phys.round() as i32,
+        )));
+        let _ = window.set_size(logical_size);
+        let _ = window.set_always_on_top(true);
+
+        crate::log_debug("[OVERLAY_EVENT] Window SHOW (reason: overlay display logic executed)");
+        let _ = window.show();
+    }
 }
 
 #[tauri::command]

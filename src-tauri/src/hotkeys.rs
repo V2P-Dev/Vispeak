@@ -273,7 +273,12 @@ fn start_rdev_listener(tx: std::sync::mpsc::Sender<HotkeyAction>) {
             if CURRENT_GENERATION.load(Ordering::Relaxed) != my_gen {
                 let elapsed = hook_start.elapsed();
                 if elapsed > std::time::Duration::from_millis(5) {
-                    eprintln!("[HOOK SLOW] ZOMBIE gen {} took {}ms for {}", my_gen, elapsed.as_millis(), event_type_dbg);
+                    eprintln!(
+                        "[HOOK SLOW] ZOMBIE gen {} took {}ms for {}",
+                        my_gen,
+                        elapsed.as_millis(),
+                        event_type_dbg
+                    );
                 }
                 return;
             }
@@ -289,7 +294,12 @@ fn start_rdev_listener(tx: std::sync::mpsc::Sender<HotkeyAction>) {
 
             let elapsed = hook_start.elapsed();
             if elapsed > std::time::Duration::from_millis(5) {
-                eprintln!("[HOOK SLOW] ACTIVE gen {} took {}ms for {}", my_gen, elapsed.as_millis(), event_type_dbg);
+                eprintln!(
+                    "[HOOK SLOW] ACTIVE gen {} took {}ms for {}",
+                    my_gen,
+                    elapsed.as_millis(),
+                    event_type_dbg
+                );
             }
         };
 
@@ -336,103 +346,113 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
             match action {
                 HotkeyAction::RawEvent(event) => {
                     match event.event_type {
-                EventType::KeyPress(key) => {
-                                        *HOOK_EVENT_COUNT.lock().unwrap() += 1;
+                        EventType::KeyPress(key) => {
+                            *HOOK_EVENT_COUNT.lock().unwrap() += 1;
 
-                    if let Some(key_str) = key_to_string(key) {
-                        prune_stuck_keys(Some(key_str));
-                        let mut pressed = PRESSED_KEYS.lock().unwrap();
-                        let was_not_pressed = pressed
-                            .insert(key_str.to_string(), Instant::now())
-                            .is_none();
+                            if let Some(key_str) = key_to_string(key) {
+                                prune_stuck_keys(Some(key_str));
+                                let mut pressed = PRESSED_KEYS.lock().unwrap();
+                                let was_not_pressed = pressed
+                                    .insert(key_str.to_string(), Instant::now())
+                                    .is_none();
 
-                        #[cfg(debug_assertions)]
-                        {
-                            let log_all = std::env::var("VISPEAK_LOG_ALL_KEYS").is_ok();
-                            let is_mod = is_modifier_key(key_str);
-                            let is_esc = key_str == "Escape";
-                            let in_hk = is_key_in_hotkey(key_str, &CURRENT_HOTKEY.lock().unwrap())
-                                || is_key_in_hotkey(key_str, &CANCEL_HOTKEY.lock().unwrap());
-                            if log_all || is_mod || is_esc || in_hk {
-                                eprintln!(
-                                    "[debug][hotkeys] KeyPress: {} | current pressed={:?}",
-                                    key_str,
-                                    pressed.keys().collect::<Vec<_>>()
-                                );
-                            }
-                        }
+                                #[cfg(debug_assertions)]
+                                {
+                                    let log_all = std::env::var("VISPEAK_LOG_ALL_KEYS").is_ok();
+                                    let is_mod = is_modifier_key(key_str);
+                                    let is_esc = key_str == "Escape";
+                                    let in_hk =
+                                        is_key_in_hotkey(key_str, &CURRENT_HOTKEY.lock().unwrap())
+                                            || is_key_in_hotkey(
+                                                key_str,
+                                                &CANCEL_HOTKEY.lock().unwrap(),
+                                            );
+                                    if log_all || is_mod || is_esc || in_hk {
+                                        eprintln!(
+                                            "[debug][hotkeys] KeyPress: {} | current pressed={:?}",
+                                            key_str,
+                                            pressed.keys().collect::<Vec<_>>()
+                                        );
+                                    }
+                                }
 
-                        if was_not_pressed {
-                            let hotkey = CURRENT_HOTKEY.lock().unwrap();
-                            let cancel_hk = CANCEL_HOTKEY.lock().unwrap();
-                            let ptt = *PUSH_TO_TALK.lock().unwrap();
-                            let mut is_rec = IS_RECORDING.lock().unwrap();
+                                if was_not_pressed {
+                                    let hotkey = CURRENT_HOTKEY.lock().unwrap();
+                                    let cancel_hk = CANCEL_HOTKEY.lock().unwrap();
+                                    let ptt = *PUSH_TO_TALK.lock().unwrap();
+                                    let mut is_rec = IS_RECORDING.lock().unwrap();
 
-                            // Check cancel hotkey first
-                            if *is_rec && is_hotkey_pressed(&cancel_hk, &pressed) {
-                                *is_rec = false;
-                                let _ = tx_processor.send(HotkeyAction::CancelRecording);
-                            } else if is_hotkey_pressed(&hotkey, &pressed) {
-                                if !*is_rec {
-                                    *is_rec = true;
-                                    *RECORD_START_TIME.lock().unwrap() = Some(Instant::now());
-                                    let _ = tx_processor.send(HotkeyAction::StartRecording);
-                                } else if !ptt {
-                                    // In Toggle mode, pressing again stops
-                                    *is_rec = false;
-                                    let _ = tx_processor.send(HotkeyAction::StopRecording);
+                                    // Check cancel hotkey first
+                                    if *is_rec && is_hotkey_pressed(&cancel_hk, &pressed) {
+                                        *is_rec = false;
+                                        let _ = tx_processor.send(HotkeyAction::CancelRecording);
+                                    } else if is_hotkey_pressed(&hotkey, &pressed) {
+                                        if !*is_rec {
+                                            *is_rec = true;
+                                            *RECORD_START_TIME.lock().unwrap() =
+                                                Some(Instant::now());
+                                            let _ = tx_processor.send(HotkeyAction::StartRecording);
+                                        } else if !ptt {
+                                            // In Toggle mode, pressing again stops
+                                            *is_rec = false;
+                                            let _ = tx_processor.send(HotkeyAction::StopRecording);
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
-                EventType::KeyRelease(key) => {
-                                        *HOOK_EVENT_COUNT.lock().unwrap() += 1;
+                        EventType::KeyRelease(key) => {
+                            *HOOK_EVENT_COUNT.lock().unwrap() += 1;
 
-                    if let Some(key_str) = key_to_string(key) {
-                        prune_stuck_keys(Some(key_str));
-                        let mut pressed = PRESSED_KEYS.lock().unwrap();
-                        pressed.remove(key_str);
+                            if let Some(key_str) = key_to_string(key) {
+                                prune_stuck_keys(Some(key_str));
+                                let mut pressed = PRESSED_KEYS.lock().unwrap();
+                                pressed.remove(key_str);
 
-                        #[cfg(debug_assertions)]
-                        {
-                            let log_all = std::env::var("VISPEAK_LOG_ALL_KEYS").is_ok();
-                            let is_mod = is_modifier_key(key_str);
-                            let is_esc = key_str == "Escape";
-                            let in_hk = is_key_in_hotkey(key_str, &CURRENT_HOTKEY.lock().unwrap())
-                                || is_key_in_hotkey(key_str, &CANCEL_HOTKEY.lock().unwrap());
-                            if log_all || is_mod || is_esc || in_hk {
-                                eprintln!(
+                                #[cfg(debug_assertions)]
+                                {
+                                    let log_all = std::env::var("VISPEAK_LOG_ALL_KEYS").is_ok();
+                                    let is_mod = is_modifier_key(key_str);
+                                    let is_esc = key_str == "Escape";
+                                    let in_hk =
+                                        is_key_in_hotkey(key_str, &CURRENT_HOTKEY.lock().unwrap())
+                                            || is_key_in_hotkey(
+                                                key_str,
+                                                &CANCEL_HOTKEY.lock().unwrap(),
+                                            );
+                                    if log_all || is_mod || is_esc || in_hk {
+                                        eprintln!(
                                     "[debug][hotkeys] KeyRelease: {} | current pressed={:?}",
                                     key_str,
                                     pressed.keys().collect::<Vec<_>>()
                                 );
-                            }
-                        }
-
-                        let hotkey = CURRENT_HOTKEY.lock().unwrap();
-                        let mut is_rec = IS_RECORDING.lock().unwrap();
-                        let ptt = *PUSH_TO_TALK.lock().unwrap();
-
-                        if *is_rec && ptt {
-                            if is_key_in_hotkey(key_str, &hotkey) {
-                                *is_rec = false;
-                                let start_time = *RECORD_START_TIME.lock().unwrap();
-                                let mut do_silent = false;
-                                if let Some(st) = start_time {
-                                    if st.elapsed().as_millis() < 300 {
-                                        do_silent = true;
                                     }
                                 }
-                                if do_silent {
-                                    let _ = tx_processor.send(HotkeyAction::CancelRecordingSilently);
-                                } else {
-                                    let _ = tx_processor.send(HotkeyAction::StopRecording);
+
+                                let hotkey = CURRENT_HOTKEY.lock().unwrap();
+                                let mut is_rec = IS_RECORDING.lock().unwrap();
+                                let ptt = *PUSH_TO_TALK.lock().unwrap();
+
+                                if *is_rec && ptt {
+                                    if is_key_in_hotkey(key_str, &hotkey) {
+                                        *is_rec = false;
+                                        let start_time = *RECORD_START_TIME.lock().unwrap();
+                                        let mut do_silent = false;
+                                        if let Some(st) = start_time {
+                                            if st.elapsed().as_millis() < 300 {
+                                                do_silent = true;
+                                            }
+                                        }
+                                        if do_silent {
+                                            let _ = tx_processor
+                                                .send(HotkeyAction::CancelRecordingSilently);
+                                        } else {
+                                            let _ = tx_processor.send(HotkeyAction::StopRecording);
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                }
 
                         _ => {}
                     }
@@ -447,13 +467,20 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                     let (caret_pos, caret_method, mut caret_trace) =
                         crate::caret_position::get_caret_position(target_hwnd_hwnd);
 
-                    let press_count = crate::transcribe::DIAGNOSTIC_HOTKEY_PRESS_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
-                    let model_state = crate::transcribe::DIAGNOSTIC_MODEL_STATE.lock().unwrap().clone();
+                    let press_count = crate::transcribe::DIAGNOSTIC_HOTKEY_PRESS_COUNT
+                        .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                        + 1;
+                    let model_state = crate::transcribe::DIAGNOSTIC_MODEL_STATE
+                        .lock()
+                        .unwrap()
+                        .clone();
                     let last_act = *crate::transcribe::DIAGNOSTIC_LAST_ACTIVITY.lock().unwrap();
                     let settings = crate::settings::load_settings();
-                    
+
                     let timer_info = if settings.auto_unload_idle_minutes > 0 {
-                        let idle_dur = std::time::Duration::from_secs(settings.auto_unload_idle_minutes as u64 * 60);
+                        let idle_dur = std::time::Duration::from_secs(
+                            settings.auto_unload_idle_minutes as u64 * 60,
+                        );
                         let elapsed = last_act.elapsed();
                         if elapsed >= idle_dur {
                             "timer expired".to_string()
@@ -464,8 +491,14 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                         "timer disabled".to_string()
                     };
 
-                    caret_trace.push_str(&format!("7. Model timer: {}, State: {}\n", timer_info, model_state));
-                    caret_trace.push_str(&format!("8. Hotkey press count since unload: {}\n", press_count));
+                    caret_trace.push_str(&format!(
+                        "7. Model timer: {}, State: {}\n",
+                        timer_info, model_state
+                    ));
+                    caret_trace.push_str(&format!(
+                        "8. Hotkey press count since unload: {}\n",
+                        press_count
+                    ));
 
                     let active_model = crate::settings::load_settings().active_model;
                     let mut can_start = false;
@@ -476,7 +509,8 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                         }
                     }
 
-                    *crate::transcribe::DIAGNOSTIC_HOTKEY_TIME.lock().unwrap() = Some(Instant::now());
+                    *crate::transcribe::DIAGNOSTIC_HOTKEY_TIME.lock().unwrap() =
+                        Some(Instant::now());
 
                     if can_start {
                         {
@@ -568,7 +602,7 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                         };
                         if still_active {
                             eprintln!("[warn][hotkeys] Watchdog recovery triggered! Heartbeat stale ({}s) during confirmed active system input. Restarting rdev listener...", elapsed_after_grace.as_secs());
-                                                        start_rdev_listener(tx_watchdog.clone());
+                            start_rdev_listener(tx_watchdog.clone());
                         }
                     }
                 }

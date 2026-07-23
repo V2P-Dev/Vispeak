@@ -97,16 +97,10 @@ fn load_model_instance(app: &AppHandle, model_id: &str) -> Option<ActiveModel> {
                 .join(model_def.files[0].0)
                 .to_string_lossy()
                 .to_string();
-            match WhisperContext::new_with_params(
-                &path_str,
-                WhisperContextParameters::default(),
-            ) {
+            match WhisperContext::new_with_params(&path_str, WhisperContextParameters::default()) {
                 Ok(ctx) => Some(ActiveModel::Whisper(ctx)),
                 Err(_e) => {
-                    let _ = app.emit(
-                        "transcription-done",
-                        "Error: err_load_failed".to_string(),
-                    );
+                    let _ = app.emit("transcription-done", "Error: err_load_failed".to_string());
                     None
                 }
             }
@@ -115,30 +109,21 @@ fn load_model_instance(app: &AppHandle, model_id: &str) -> Option<ActiveModel> {
             "parakeet" => match ParakeetModel::load(&model_dir, &Quantization::Int8) {
                 Ok(m) => Some(ActiveModel::Parakeet(m)),
                 Err(_e) => {
-                    let _ = app.emit(
-                        "transcription-done",
-                        "Error: err_load_failed".to_string(),
-                    );
+                    let _ = app.emit("transcription-done", "Error: err_load_failed".to_string());
                     None
                 }
             },
             "canary" => match CanaryModel::load(&model_dir, &Quantization::Int8) {
                 Ok(m) => Some(ActiveModel::Canary(m)),
                 Err(_e) => {
-                    let _ = app.emit(
-                        "transcription-done",
-                        "Error: err_load_failed".to_string(),
-                    );
+                    let _ = app.emit("transcription-done", "Error: err_load_failed".to_string());
                     None
                 }
             },
             "gigaam" => match GigaAMModel::load(&model_dir, &Quantization::Int8) {
                 Ok(m) => Some(ActiveModel::GigaAM(m)),
                 Err(_e) => {
-                    let _ = app.emit(
-                        "transcription-done",
-                        "Error: err_load_failed".to_string(),
-                    );
+                    let _ = app.emit("transcription-done", "Error: err_load_failed".to_string());
                     None
                 }
             },
@@ -158,10 +143,7 @@ fn load_model_instance(app: &AppHandle, model_id: &str) -> Option<ActiveModel> {
             match transcribe_cpp::Model::load(&path_str) {
                 Ok(m) => Some(ActiveModel::Ggml(m)),
                 Err(_e) => {
-                    let _ = app.emit(
-                        "transcription-done",
-                        "Error: err_load_failed".to_string(),
-                    );
+                    let _ = app.emit("transcription-done", "Error: err_load_failed".to_string());
                     None
                 }
             }
@@ -208,7 +190,8 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                             active_model_id = None;
                             *LOADED_MODEL_ID.lock().unwrap() = None;
                             *DIAGNOSTIC_MODEL_STATE.lock().unwrap() = "Unloaded".to_string();
-                            DIAGNOSTIC_HOTKEY_PRESS_COUNT.store(0, std::sync::atomic::Ordering::SeqCst);
+                            DIAGNOSTIC_HOTKEY_PRESS_COUNT
+                                .store(0, std::sync::atomic::Ordering::SeqCst);
                             if let Some(app) = &last_app {
                                 let _ = app.emit("model-unloaded", ());
                             }
@@ -431,11 +414,10 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                 }
 
                 *DIAGNOSTIC_LAST_ACTIVITY.lock().unwrap() = std::time::Instant::now();
-                
+
                 let is_processing = {
-                    let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<
-                        crate::audio::AudioState,
-                    >>>();
+                    let state_arc =
+                        app.state::<std::sync::Arc<std::sync::Mutex<crate::audio::AudioState>>>();
                     let mut state = state_arc.inner().lock().unwrap();
                     let was_processing = state.is_processing;
                     state.is_processing = false;
@@ -452,7 +434,8 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                         let _ = app.emit("model-loaded", ());
                         *DIAGNOSTIC_MODEL_STATE.lock().unwrap() = "Loaded".to_string();
                     } else {
-                        *DIAGNOSTIC_MODEL_STATE.lock().unwrap() = "Unloaded (Load Failed)".to_string();
+                        *DIAGNOSTIC_MODEL_STATE.lock().unwrap() =
+                            "Unloaded (Load Failed)".to_string();
                         continue;
                     }
                 }
@@ -487,9 +470,8 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                     }
 
                     let (target_app_name, target_app_icon) = {
-                        let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<
-                            crate::audio::AudioState,
-                        >>>();
+                        let state_arc = app
+                            .state::<std::sync::Arc<std::sync::Mutex<crate::audio::AudioState>>>();
                         let state = state_arc.inner().lock().unwrap();
                         if let Some(app_info) = &state.app_info {
                             (app_info.title.clone(), app_info.icon_base64.clone())
@@ -507,9 +489,8 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                     );
 
                     let is_recording_now = {
-                        let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<
-                            crate::audio::AudioState,
-                        >>>();
+                        let state_arc = app
+                            .state::<std::sync::Arc<std::sync::Mutex<crate::audio::AudioState>>>();
                         let state = state_arc.inner().lock().unwrap();
                         state.is_recording
                     };
