@@ -231,7 +231,7 @@ Vispeak — desktop-приложение для локальной офлайн-
   «Обновить сейчас» -> прогресс -> relaunch; «Позже» -> кнопка висит тихо.
 - Порядок релиза: version в tauri.conf.json + package.json -> commit ->
   git tag vX.Y.Z -> push тега -> GitHub Actions (release.yml) собирает, подписывает,
-  публикует релиз с .exe и latest.json.
+  публикует релиз с .exe и latest.json (release notes из docs/release_notes_vX.Y.Z.md при наличии).
 - Ключи: приватный ключ + пароль НЕ в репо (Bitwarden); GitHub Secrets
   TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD для tauri-action.
 

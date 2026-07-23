@@ -1,4 +1,4 @@
-# GEMINI.md — Agent rules for the Vispeak project
+# Agent rules for the Vispeak project
 
 ## About the project
 Vispeak is a Windows desktop application for local, offline voice transcription triggered by a global hotkey. The user presses Ctrl+Space, dictates, and the transcribed text is pasted into the active text field. Stack: Tauri 2, Rust (backend), React + TypeScript + Tailwind (frontend), whisper-rs, cpal, enigo, tauri-plugin-global-shortcut.

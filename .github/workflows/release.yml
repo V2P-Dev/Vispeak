@@ -27,6 +27,20 @@ jobs:
       - name: install frontend dependencies
         run: npm install
 
+      - name: Read release notes
+        id: release_notes
+        shell: bash
+        run: |
+          if [ -f "docs/release_notes_${{ github.ref_name }}.md" ]; then
+            EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+            echo "body<<$EOF" >> "$GITHUB_OUTPUT"
+            cat "docs/release_notes_${{ github.ref_name }}.md" >> "$GITHUB_OUTPUT"
+            echo "" >> "$GITHUB_OUTPUT"
+            echo "$EOF" >> "$GITHUB_OUTPUT"
+          else
+            echo "body=Новая версия Vispeak доступна для установки. Подробности см. на странице релиза GitHub." >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -35,6 +49,6 @@ jobs:
         with:
           tagName: v__VERSION__ 
           releaseName: 'Vispeak v__VERSION__'
-          releaseBody: 'Новая версия Vispeak доступна для установки. Подробности см. на странице релиза GitHub.'
+          releaseBody: ${{ steps.release_notes.outputs.body }}
           releaseDraft: false
           prerelease: false
