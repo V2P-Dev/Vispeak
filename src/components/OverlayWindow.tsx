@@ -156,10 +156,17 @@ function useOverlayState() {
         const code = payload.replace("Error: ", "");
         // "err_speech_not_recognized" usually just shows silently without red error if user canceled
         if (code === "err_speech_not_recognized") {
+          setIsRecording(false);
+          setIsProcessing(false);
+          setIsSuccess(false);
+          setIsCopied(false);
+          setIsError(false);
           setErrorText(null);
-        } else {
-          setErrorText(t(lang, `errors.${code}`));
+          clearHideTimeout();
+          return;
         }
+        
+        setErrorText(t(lang, `errors.${code}`));
         setIsRecording(false);
         setIsProcessing(false);
         setIsSuccess(false);
@@ -183,7 +190,9 @@ function useOverlayState() {
       
       clearHideTimeout();
       hideTimeoutRef.current = window.setTimeout(() => {
-        invoke("hide_overlay");
+        setIsSuccess(false);
+        setIsCopied(false);
+        setIsError(false);
       }, 1500);
     });
 
@@ -197,7 +206,7 @@ function useOverlayState() {
       
       clearHideTimeout();
       hideTimeoutRef.current = window.setTimeout(() => {
-        invoke("hide_overlay");
+        setIsError(false);
         setErrorText(null);
       }, 2000);
     });
@@ -247,22 +256,34 @@ function useOverlayState() {
 function OverlayFull(props: ReturnType<typeof useOverlayState>) {
   const { level, statusText, errorText, appInfo, isRecording, isProcessing, isSuccess, isError, lang } = props;
 
-  let glowClass = "border-border/50 shadow-lg";
+  let glowClass = "shadow-lg";
   let footerText = t(lang, "overlay.cancel");
   if (isRecording) {
-    glowClass = "border-accent/40 animate-glow-pulse";
+    glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "border-processing/40 shadow-[0_0_24px_rgba(77,216,230,0.3)]";
+    glowClass = "shadow-[0_0_24px_rgba(77,216,230,0.3)]";
     footerText = t(lang, "overlay.processing");
   } else if (isSuccess) {
-    glowClass = "border-success/40 shadow-[0_0_24px_rgba(126,212,145,0.3)]";
+    glowClass = "shadow-[0_0_24px_rgba(126,212,145,0.3)]";
   } else if (isError) {
-    glowClass = "border-accent/80 shadow-[0_0_24px_rgba(255,85,51,0.15)]";
+    glowClass = "shadow-[0_0_24px_rgba(255,85,51,0.15)]";
   }
+
+  const isActive = isRecording || isProcessing || isSuccess || isError;
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (isActive) {
+      const t = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(t);
+    } else {
+      setIsVisible(false);
+    }
+  }, [isActive]);
 
   return (
     <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
-      <div className={`w-[344px] h-[114px] bg-overlay/90 backdrop-blur-md rounded-[20px] flex flex-col border transition-all duration-300 ${glowClass} overflow-hidden`}>
+      <div className={`w-[311px] h-[103px] bg-overlay/95 backdrop-blur-md rounded-[20px] flex flex-col transition-all duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden`}>
         
         {/* Header */}
         <div className="flex flex-row items-center justify-between w-full px-3 py-1.5 border-b border-border/50 bg-surface/50">
@@ -294,12 +315,12 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
           {isRecording && <Visualizer level={level} colorClass="bg-accent" />}
           {isProcessing && <Visualizer level={0.0} colorClass="bg-processing" pulse />}
           {isSuccess && (
-            <span className="text-primary text-sm tracking-wide text-center line-clamp-2 leading-tight">
+            <span className="text-primary text-xs tracking-wide text-center line-clamp-2 leading-tight">
               {statusText}
             </span>
           )}
           {isError && (
-            <span className="text-accent text-sm font-medium text-center">
+            <span className="text-accent text-xs font-medium text-center">
               {errorText || t(lang, "overlay.error_no_mic")}
             </span>
           )}
@@ -338,21 +359,33 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
     return () => observer.disconnect();
   }, []);
 
-  let glowClass = "border-border/50 shadow-lg";
+  let glowClass = "shadow-lg";
 
   if (isRecording) {
-    glowClass = "border-accent/40 animate-glow-pulse";
+    glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "border-processing/40 shadow-[0_0_24px_rgba(77,216,230,0.3)]";
+    glowClass = "shadow-[0_0_24px_rgba(77,216,230,0.3)]";
   } else if (isSuccess) {
-    glowClass = "border-success/40 shadow-[0_0_24px_rgba(126,212,145,0.3)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
+    glowClass = "shadow-[0_0_24px_rgba(126,212,145,0.3)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
   } else if (isError) {
-    glowClass = "border-accent/80 shadow-[0_0_24px_rgba(255,85,51,0.15)]";
+    glowClass = "shadow-[0_0_24px_rgba(255,85,51,0.15)]";
   }
+
+  const isActive = isRecording || isProcessing || isSuccess || isError;
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (isActive) {
+      const t = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(t);
+    } else {
+      setIsVisible(false);
+    }
+  }, [isActive]);
 
   return (
     <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
-      <div className={`w-[220px] h-[48px] px-4 bg-overlay/90 backdrop-blur-md rounded-full flex flex-row items-center border transition-all duration-300 ${glowClass} overflow-hidden relative`}>
+      <div className={`w-[199px] h-[44px] px-4 bg-overlay/95 backdrop-blur-md rounded-full flex flex-row items-center transition-all duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden relative`}>
         
         {/* RECORDING STATE */}
         <div className={`absolute inset-0 px-4 flex flex-row items-center transition-opacity duration-200 ${isRecording ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
@@ -373,7 +406,7 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '150ms' }}></div>
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '300ms' }}></div>
            </div>
-           <span className="text-secondary text-xs font-medium truncate">{t(lang, "overlay.processing")}</span>
+           <span className="text-secondary text-[10px] font-medium truncate">{t(lang, "overlay.processing")}</span>
         </div>
 
         {/* SUCCESS STATE */}
@@ -397,7 +430,7 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
              <line x1="18" y1="6" x2="6" y2="18"></line>
              <line x1="6" y1="6" x2="18" y2="18"></line>
            </svg>
-           <span className="text-accent text-sm font-medium truncate flex-1 ml-2 text-center">
+           <span className="text-accent text-xs font-medium truncate flex-1 ml-2 text-center">
              {errorText || t(lang, "overlay.error_no_mic")}
            </span>
         </div>
@@ -425,21 +458,33 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
     return () => observer.disconnect();
   }, []);
 
-  let glowClass = "border-border/50 shadow-lg";
+  let glowClass = "shadow-lg";
 
   if (isRecording) {
-    glowClass = "border-accent/40 animate-glow-pulse";
+    glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "border-processing/40 shadow-[0_0_24px_rgba(77,216,230,0.3)]";
+    glowClass = "shadow-[0_0_24px_rgba(77,216,230,0.3)]";
   } else if (isSuccess) {
-    glowClass = "border-success/40 shadow-[0_0_24px_rgba(126,212,145,0.3)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
+    glowClass = "shadow-[0_0_24px_rgba(126,212,145,0.3)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
   } else if (isError) {
-    glowClass = "border-accent/80 shadow-[0_0_24px_rgba(255,85,51,0.15)]";
+    glowClass = "shadow-[0_0_24px_rgba(255,85,51,0.15)]";
   }
+
+  const isActive = isRecording || isProcessing || isSuccess || isError;
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    if (isActive) {
+      const t = setTimeout(() => setIsVisible(true), 10);
+      return () => clearTimeout(t);
+    } else {
+      setIsVisible(false);
+    }
+  }, [isActive]);
 
   return (
     <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
-      <div className={`w-[96px] h-[34px] px-2.5 bg-overlay/90 backdrop-blur-md rounded-full flex flex-row items-center justify-center border transition-all duration-300 ${glowClass} overflow-hidden relative`}>
+      <div className={`w-[86px] h-[34px] px-2.5 bg-overlay/95 backdrop-blur-md rounded-full flex flex-row items-center justify-center transition-all duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden relative`}>
         
         {/* RECORDING STATE */}
         <div className={`absolute inset-0 px-2.5 flex flex-row items-center justify-center transition-opacity duration-200 ${isRecording ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
@@ -487,8 +532,23 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
 
 export function OverlayWindow() {
   const state = useOverlayState();
+  const [isRendered, setIsRendered] = useState(false);
 
-  if (!state.isRecording && !state.isProcessing && !state.isSuccess && !state.isError) {
+  const isActive = state.isRecording || state.isProcessing || state.isSuccess || state.isError;
+
+  useEffect(() => {
+    if (isActive) {
+      setIsRendered(true);
+    } else {
+      const t = setTimeout(() => {
+        setIsRendered(false);
+        invoke("hide_overlay");
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [isActive]);
+
+  if (!isRendered && !isActive) {
      return <div className="hidden"></div>;
   }
 

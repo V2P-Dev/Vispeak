@@ -560,17 +560,12 @@ fn worker_process(
             }
             Err(crossbeam_channel::RecvTimeoutError::Timeout) => {
                 if total_samples_received == 0
-                    && start_time.elapsed() >= std::time::Duration::from_millis(500)
+                    && start_time.elapsed() >= std::time::Duration::from_millis(1500)
                 {
-                    eprintln!("[warn][audio] Watchdog triggered: 0 samples received within first 500ms after play()!");
+                    eprintln!("[warn][audio] Watchdog triggered: 0 samples received within first 1500ms after play()!");
                     return WorkerResult::StalledNoSamples;
                 }
-                if total_samples_received > 0
-                    && last_sample_time.elapsed() >= std::time::Duration::from_millis(500)
-                {
-                    eprintln!("[warn][audio] Watchdog triggered: stream gap > 500ms during active recording!");
-                    return WorkerResult::StalledNoSamples;
-                }
+                // No gap watchdog for total_samples_received > 0, to support smart mics that gate silence.
                 continue;
             }
             Err(crossbeam_channel::RecvTimeoutError::Disconnected) => {
