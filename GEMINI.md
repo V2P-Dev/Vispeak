@@ -88,4 +88,6 @@ NOT, and ask.
   release; those live in the README.
 - The first release (v0.1.1) keeps its full "showcase" description; from v0.1.2
   onward, notes are changelog-only.
+- The GitHub Release Title must strictly be the version string (e.g. `v0.1.5`).
+  NEVER include the word "Vispeak" in the release title (DO NOT use `Vispeak v0.1.5`).
 - Use docs/RELEASE_NOTES_TEMPLATE.md as the base; fill only non-empty categories.
