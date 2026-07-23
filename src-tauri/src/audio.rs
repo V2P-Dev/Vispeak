@@ -500,7 +500,6 @@ fn worker_process(
     let mut ducked_already = false;
     let mut total_samples_received: usize = 0;
     let start_time = std::time::Instant::now();
-    let mut last_sample_time = std::time::Instant::now();
     let mut last_log_time = std::time::Instant::now();
 
     let gain = settings.microphone_gain;
@@ -538,7 +537,6 @@ fn worker_process(
                     }
                 }
                 total_samples_received += 1;
-                last_sample_time = std::time::Instant::now();
 
                 if !ducked_already
                     && should_duck
