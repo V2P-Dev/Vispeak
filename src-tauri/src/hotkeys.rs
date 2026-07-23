@@ -444,8 +444,28 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                         .map(|info| windows::Win32::Foundation::HWND(info.hwnd as _));
 
                     // Capture caret position IMMEDIATELY right at keypress before any delays/model loading
-                    let (caret_pos, caret_method, caret_trace) =
+                    let (caret_pos, caret_method, mut caret_trace) =
                         crate::caret_position::get_caret_position(target_hwnd_hwnd);
+
+                    let press_count = crate::transcribe::DIAGNOSTIC_HOTKEY_PRESS_COUNT.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                    let model_state = crate::transcribe::DIAGNOSTIC_MODEL_STATE.lock().unwrap().clone();
+                    let last_act = *crate::transcribe::DIAGNOSTIC_LAST_ACTIVITY.lock().unwrap();
+                    let settings = crate::settings::load_settings();
+                    
+                    let timer_info = if settings.auto_unload_idle_minutes > 0 {
+                        let idle_dur = std::time::Duration::from_secs(settings.auto_unload_idle_minutes as u64 * 60);
+                        let elapsed = last_act.elapsed();
+                        if elapsed >= idle_dur {
+                            "timer expired".to_string()
+                        } else {
+                            format!("{}s left", (idle_dur - elapsed).as_secs())
+                        }
+                    } else {
+                        "timer disabled".to_string()
+                    };
+
+                    caret_trace.push_str(&format!("7. Model timer: {}, State: {}\n", timer_info, model_state));
+                    caret_trace.push_str(&format!("8. Hotkey press count since unload: {}\n", press_count));
 
                     let active_model = crate::settings::load_settings().active_model;
                     let mut can_start = false;
@@ -455,6 +475,8 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                             can_start = true;
                         }
                     }
+
+                    *crate::transcribe::DIAGNOSTIC_HOTKEY_TIME.lock().unwrap() = Some(Instant::now());
 
                     if can_start {
                         {

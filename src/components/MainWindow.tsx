@@ -186,7 +186,12 @@ export function MainWindow() {
           {activePage === "controls" && <ControlsPage lang={lang} />}
           {activePage === "history" && <HistoryPage lang={lang} />}
           {activePage === "general" && <GeneralPage lang={lang} />}
-          {activePage === "about" && <AboutPage lang={lang} />}
+          {activePage === "about" && (
+            <AboutPage 
+              lang={lang} 
+              onShowUpdate={() => setShowUpdateDialog(true)} 
+            />
+          )}
         </div>
       </div>
     </div>

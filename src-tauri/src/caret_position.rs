@@ -234,13 +234,15 @@ pub fn try_get_uia_caret_rect(target_hwnd: HWND) -> (Option<CaretRect>, String) 
                     return None;
                 }
             };
-            let element = match automation.GetFocusedElement() {
-                Ok(e) => e,
-                Err(e) => {
-                    log.push_str(&format!("Failed GetFocusedElement: {:?}\n", e));
-                    return None;
-                }
-            };
+            let mut attempt = 0;
+            loop {
+                let element = match automation.GetFocusedElement() {
+                    Ok(e) => e,
+                    Err(e) => {
+                        log.push_str(&format!("Failed GetFocusedElement: {:?}\n", e));
+                        return None;
+                    }
+                };
 
             let mut range_opt: Option<IUIAutomationTextRange> = None;
             let mut pattern_source = "none";
@@ -301,37 +303,47 @@ pub fn try_get_uia_caret_rect(target_hwnd: HWND) -> (Option<CaretRect>, String) 
                 }
             }
 
-            if slice_data.len() >= 4 {
-                let left = slice_data[0];
-                let top = slice_data[1];
-                let width = slice_data[2];
-                let height = slice_data[3];
+                if slice_data.len() >= 4 {
+                    let left = slice_data[0];
+                    let top = slice_data[1];
+                    let width = slice_data[2];
+                    let height = slice_data[3];
 
-                let raw_rect = CaretRect::new(
-                    left.round() as i32,
-                    top.round() as i32,
-                    (left + width).round() as i32,
-                    (top + height).round() as i32,
-                );
+                    let raw_rect = CaretRect::new(
+                        left.round() as i32,
+                        top.round() as i32,
+                        (left + width).round() as i32,
+                        (top + height).round() as i32,
+                    );
 
-                log.push_str(&format!("Success: source={} rect={:?}\n", pattern_source, raw_rect));
-
-                if let Err(reason) = validate_caret_rect(&raw_rect, target_hwnd, "uia") {
-                    if reason.contains("[CARET SUSPECT]") {
-                        log.push_str(&format!("{} (rejected)\n", reason));
-                    } else {
-                        log.push_str(&format!("Validation failed: {}\n", reason));
+                    if raw_rect.kind != CaretKind::Caret && attempt < 2 {
+                        attempt += 1;
+                        std::thread::sleep(std::time::Duration::from_millis(20));
+                        continue;
                     }
+
+                    log.push_str(&format!("2. UIA branch: SUCCESS (source={})\n", pattern_source));
+                    
+                    let classification_reason = format!("w={}, h={}", (raw_rect.right - raw_rect.left), (raw_rect.bottom - raw_rect.top));
+                    log.push_str(&format!("3. Raw Rect: left={}, top={}, right={}, bottom={}\n", raw_rect.left, raw_rect.top, raw_rect.right, raw_rect.bottom));
+                    log.push_str(&format!("5. Classification: {:?} (reason: {})\n", raw_rect.kind, classification_reason));
+
+                    if let Err(reason) = validate_caret_rect(&raw_rect, target_hwnd, "uia") {
+                        if reason.contains("[CARET SUSPECT]") {
+                            log.push_str(&format!("4. Validation: SUSPECT ({})\n", reason));
+                        } else {
+                            log.push_str(&format!("4. Validation: FAILED ({})\n", reason));
+                        }
+                        return None;
+                    }
+
+                    log.push_str("4. Validation: PASSED\n");
+                    return Some(raw_rect);
+                } else {
+                    log.push_str(&format!("Invalid slice_data length: {}\n", slice_data.len()));
                     return None;
                 }
-
-                log.push_str("Validation passed\n");
-                return Some(raw_rect);
-            } else {
-                log.push_str(&format!("Invalid slice_data length: {}\n", slice_data.len()));
             }
-
-            None
         })();
 
         if initialized {
@@ -394,27 +406,31 @@ pub fn try_get_win32_caret_rect(target_hwnd: Option<HWND>) -> (Option<CaretRect>
                         pt_bottom_right.y,
                     );
 
-                    log.push_str(&format!("Success: rect={:?}\n", raw_rect));
+                    log.push_str("2. Win32 branch: SUCCESS\n");
+                    
+                    let classification_reason = format!("w={}, h={}", (raw_rect.right - raw_rect.left), (raw_rect.bottom - raw_rect.top));
+                    log.push_str(&format!("3. Raw Rect: left={}, top={}, right={}, bottom={}\n", raw_rect.left, raw_rect.top, raw_rect.right, raw_rect.bottom));
+                    log.push_str(&format!("5. Classification: {:?} (reason: {})\n", raw_rect.kind, classification_reason));
 
                     if let Err(reason) = validate_caret_rect(&raw_rect, hwnd, "win32") {
                         if reason.contains("[CARET SUSPECT]") {
-                            log.push_str(&format!("{} (rejected)\n", reason));
+                            log.push_str(&format!("4. Validation: SUSPECT ({})\n", reason));
                         } else {
-                            log.push_str(&format!("Validation failed: {}\n", reason));
+                            log.push_str(&format!("4. Validation: FAILED ({})\n", reason));
                         }
                         return (None, log);
                     }
 
-                    log.push_str("Validation passed\n");
+                    log.push_str("4. Validation: PASSED\n");
                     return (Some(raw_rect), log);
                 } else {
-                    log.push_str("ClientToScreen failed\n");
+                    log.push_str("2. Win32 branch: ClientToScreen failed\n");
                 }
             } else {
-                log.push_str(&format!("Invalid rcCaret dimensions: {:?}\n", rc));
+                log.push_str(&format!("2. Win32 branch: Invalid rcCaret dimensions: {:?}\n", rc));
             }
         } else {
-            log.push_str("GetGUIThreadInfo failed\n");
+            log.push_str("2. Win32 branch: GetGUIThreadInfo failed\n");
         }
         (None, log)
     }
@@ -427,8 +443,8 @@ pub fn get_caret_position(target_hwnd: Option<HWND>) -> (Option<CaretRect>, Care
     let (title, class, process) = get_window_info(hwnd);
 
     let mut trace = format!(
-        "[CARET DIAGNOSTICS]\nWindow: title='{}', class='{}', process='{}'\n",
-        title, class, process
+        "[CARET DIAGNOSTICS]\n1. Window: process='{}', class='{}', title='{}'\n",
+        process, class, title
     );
 
     let (tx, rx) = channel();
@@ -439,38 +455,51 @@ pub fn get_caret_position(target_hwnd: Option<HWND>) -> (Option<CaretRect>, Care
 
     let mut selected_rect = None;
     let mut selected_method = CaretMethod::Fallback;
+    let mut uia_is_caret = false;
 
-    if let Ok((res_opt, log)) = rx.recv_timeout(Duration::from_millis(100)) {
-        trace.push_str("Branch UIA: ");
+    if let Ok((res_opt, log)) = rx.recv_timeout(Duration::from_millis(150)) {
         if let Some(rect) = res_opt {
             trace.push_str(&log);
             selected_rect = Some(rect);
             selected_method = CaretMethod::Uia;
+            if rect.kind == CaretKind::Caret {
+                uia_is_caret = true;
+            }
         } else {
-            trace.push_str("Failed. ");
+            trace.push_str("2. UIA branch: Failed. ");
             trace.push_str(&log);
         }
     } else {
-        trace.push_str("Branch UIA: Failed (timeout 100ms)\n");
+        trace.push_str("2. UIA branch: Failed (timeout 150ms)\n");
     }
 
-    if selected_rect.is_none() {
+    if selected_rect.is_none() || !uia_is_caret {
         let (res_opt, log) = try_get_win32_caret_rect(Some(hwnd));
-        trace.push_str("Branch Win32: ");
         if let Some(rect) = res_opt {
-            trace.push_str(&log);
-            selected_rect = Some(rect);
-            selected_method = CaretMethod::Win32;
+            if rect.kind == CaretKind::Caret {
+                if selected_rect.is_some() {
+                    trace.push_str("2. UIA yielded Field/Area, but Win32 found Caret! Preferring Win32.\n");
+                }
+                trace.push_str(&log);
+                selected_rect = Some(rect);
+                selected_method = CaretMethod::Win32;
+            } else {
+                trace.push_str("2. Win32 branch: Fallback attempted, but also not Caret.\n");
+                trace.push_str(&log);
+            }
         } else {
-            trace.push_str("Failed. ");
-            trace.push_str(&log);
+            if selected_rect.is_some() {
+                trace.push_str("2. Win32 branch: Fallback failed. Keeping UIA Field/Area.\n");
+            } else {
+                trace.push_str(&log);
+            }
         }
     } else {
-        trace.push_str("Branch Win32: Skipped\n");
+        trace.push_str("2. Win32 branch: Skipped (UIA found Caret)\n");
     }
 
     if selected_rect.is_none() {
-        trace.push_str("Branch Fallback: Selected\n");
+        trace.push_str("2. Fallback branch: Selected\n");
     }
 
     (selected_rect, selected_method, trace)

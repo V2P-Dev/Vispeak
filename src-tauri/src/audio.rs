@@ -282,6 +282,7 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
                         state.is_recording = false;
                         state.is_processing = false;
                         if let Some(window) = app_clone.get_webview_window("overlay") {
+                            crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: watchdog timeout worker aborted)");
                             let _ = window.hide();
                         }
                     }
@@ -300,6 +301,7 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
                 state.is_previewing = false;
                 let _ = state.stop_tx.take();
                 if let Some(window) = app_clone.get_webview_window("overlay") {
+                    crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: audio session start failed)");
                     let _ = window.hide();
                 }
             }
@@ -398,6 +400,7 @@ pub fn cancel_action(app: AppHandle) {
 
     let _ = app.emit("recording-cancelled", ());
     if let Some(window) = app.get_webview_window("overlay") {
+        crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: cancel_action)");
         let _ = window.hide();
     }
 }
@@ -421,6 +424,7 @@ pub fn cancel_action_silently(app: AppHandle) {
     // We emit a silent cancel so the frontend can reset its UI state without showing an error
     let _ = app.emit("recording-cancelled-silently", ());
     if let Some(window) = app.get_webview_window("overlay") {
+        crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: cancel_action_silently)");
         let _ = window.hide();
     }
 }
@@ -504,7 +508,7 @@ fn worker_process(
     eprintln!("[info][audio] Resampler initialized for worker: in_sr={}Hz ({}ch) -> out_sr={}Hz (mono 1ch)", in_sample_rate, channels, target_sample_rate);
 
     let mut accumulated_samples = Vec::new();
-    let max_samples = 16000 * 60; // 60 seconds
+    let max_samples = 16000 * 120; // 120 seconds
 
     let mut rms_sum = 0.0;
     let mut rms_count = 0;
@@ -598,6 +602,7 @@ fn worker_process(
                 let state_arc = app.state::<Arc<Mutex<AudioState>>>();
                 let mut state = state_arc.inner().lock().unwrap();
                 state.is_recording = false;
+                state.is_processing = true;
                 let _ = state.stop_tx.take();
                 break;
             }
@@ -637,6 +642,9 @@ fn worker_process(
             "transcription-done",
             "Error: err_speech_not_recognized".to_string(),
         );
+        let state_arc = app.state::<Arc<Mutex<AudioState>>>();
+        let mut state = state_arc.inner().lock().unwrap();
+        state.is_processing = false;
         return WorkerResult::Completed;
     }
 
@@ -644,6 +652,9 @@ fn worker_process(
         Ok(v) => v,
         Err(_e) => {
             let _ = app.emit("show-error", "err_vad_failed".to_string());
+            let state_arc = app.state::<Arc<Mutex<AudioState>>>();
+            let mut state = state_arc.inner().lock().unwrap();
+            state.is_processing = false;
             return WorkerResult::Completed;
         }
     };
@@ -655,6 +666,9 @@ fn worker_process(
                 "transcription-done",
                 "Error: err_speech_not_recognized".to_string(),
             );
+            let state_arc = app.state::<Arc<Mutex<AudioState>>>();
+            let mut state = state_arc.inner().lock().unwrap();
+            state.is_processing = false;
             return WorkerResult::Completed;
         }
         Err(e) => {
@@ -672,6 +686,9 @@ fn worker_process(
             "transcription-done",
             "Error: err_speech_not_recognized".to_string(),
         );
+        let state_arc = app.state::<Arc<Mutex<AudioState>>>();
+        let mut state = state_arc.inner().lock().unwrap();
+        state.is_processing = false;
         return WorkerResult::Completed;
     }
 
@@ -688,6 +705,9 @@ fn worker_process(
             "transcription-done",
             "Error: err_no_model_selected".to_string(),
         );
+        let state_arc = app.state::<Arc<Mutex<AudioState>>>();
+        let mut state = state_arc.inner().lock().unwrap();
+        state.is_processing = false;
     }
     WorkerResult::Completed
 }

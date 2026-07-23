@@ -6,16 +6,17 @@ import { Logo } from "../Logo";
 
 interface AboutPageProps {
   lang: Language;
+  onShowUpdate: () => void;
 }
 
-export function AboutPage({ lang }: AboutPageProps) {
-  const { currentVersion, isChecking, checkForUpdates } = useUpdater();
+export function AboutPage({ lang, onShowUpdate }: AboutPageProps) {
+  const { currentVersion, isChecking, checkForUpdates, update } = useUpdater();
   const [checkStatus, setCheckStatus] = useState<UpdateStatus | "idle">("idle");
 
   const handleCheck = async () => {
     setCheckStatus("idle");
     const result = await checkForUpdates();
-    if (result) {
+    if (result && !update) {
       setCheckStatus(result.status);
     }
   };
@@ -49,22 +50,38 @@ export function AboutPage({ lang }: AboutPageProps) {
         </div>
 
         <div className="flex flex-col items-center gap-2 mt-2 w-full max-w-xs">
-          <button 
-            onClick={handleCheck}
-            disabled={isChecking}
-            className="w-full py-2.5 px-4 bg-window border border-border rounded-xl text-primary text-sm font-medium hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {isChecking 
-              ? (lang === "ru" ? "Проверка..." : "Checking...") 
-              : (lang === "ru" ? "Проверить обновления" : "Check for updates")}
-          </button>
-          
-          {checkStatus !== "idle" && (
-            <div className="flex flex-col items-center mt-2">
-              <span className={`text-xs font-medium text-center ${checkStatus === "up-to-date" || checkStatus === "available" ? "text-success" : "text-accent"}`}>
-                {t(lang, `updater_status.${checkStatus}`)}
-              </span>
-            </div>
+          {update ? (
+            <button 
+              onClick={onShowUpdate}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-accent text-black rounded-xl text-sm font-semibold shadow-[var(--shadow-accent-sm)] hover:bg-accent/90 transition-colors cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" x2="12" y1="15" y2="3" />
+              </svg>
+              {lang === "ru" ? `Доступно обновление v${update.version}` : `Update available v${update.version}`}
+            </button>
+          ) : (
+            <>
+              <button 
+                onClick={handleCheck}
+                disabled={isChecking}
+                className="w-full py-2.5 px-4 bg-window border border-border rounded-xl text-primary text-sm font-medium hover:border-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              >
+                {isChecking 
+                  ? (lang === "ru" ? "Проверка..." : "Checking...") 
+                  : (lang === "ru" ? "Проверить обновления" : "Check for updates")}
+              </button>
+              
+              {checkStatus !== "idle" && (
+                <div className="flex flex-col items-center mt-2">
+                  <span className={`text-xs font-medium text-center ${checkStatus === "up-to-date" ? "text-success" : "text-accent"}`}>
+                    {t(lang, `updater_status.${checkStatus}`)}
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
 

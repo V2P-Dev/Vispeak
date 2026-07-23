@@ -15,6 +15,14 @@ pub mod vad;
 
 use audio::AudioState;
 
+pub fn log_debug(msg: &str) {
+    eprintln!("{}", msg);
+    if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open("vispeak_debug.log") {
+        use std::io::Write;
+        let _ = writeln!(file, "{}", msg);
+    }
+}
+
 pub fn show_overlay(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("overlay") {
         use std::mem;
@@ -154,20 +162,18 @@ pub fn show_overlay(app: tauri::AppHandle) {
                 &rc_work_caret,
             );
 
-            trace_log.push_str(&format!(
-                "DPI Scale: {}, Rect: {:?}
-Target: ({}, {})
-Clamped X: {}, Placement: {}
-",
-                scale_caret, effective_rect, pos_res.x, pos_res.y, pos_res.clamped_x, pos_res.placement
-            ));
+            trace_log.push_str(&format!("6. DPI Scale: {}, Rect: {:?}\n", scale_caret, effective_rect));
             
             let dx = pos_res.x - effective_rect.left as f64;
             let dy = pos_res.y - effective_rect.top as f64;
             if dx.abs() > 300.0 || dy.abs() > 300.0 {
-                trace_log.push_str("[CARET ANOMALY] Final position far from raw rect
-");
+                trace_log.push_str("[CARET ANOMALY] Final position far from raw rect\n");
             }
+
+            trace_log.push_str(&format!(
+                "10. Final Capsule Position: ({}, {}) Clamped X: {}, Placement: {}\n",
+                pos_res.x, pos_res.y, pos_res.clamped_x, pos_res.placement
+            ));
 
             (pos_res.x, pos_res.y)
         } else {
@@ -195,26 +201,37 @@ Clamped X: {}, Placement: {}
             };
 
             trace_log.push_str(&format!(
-                "Fallback Position: ({}, {}) pos_str='{}' scale={}
-[CARET FALLBACK]
-",
+                "6. DPI Scale: {} (fallback window)\n", scale_factor
+            ));
+            trace_log.push_str(&format!(
+                "10. Final Capsule Position: ({}, {}) pos_str='{}' scale={}\n",
                 x, y, pos_str, scale_factor
             ));
+            trace_log.push_str("[CARET FALLBACK]\n");
 
             (x, y)
         };
-        
-        eprintln!("{}===================", trace_log);
 
-        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
-            x_phys.round() as i32,
-            y_phys.round() as i32,
-        )));
-        let _ = window.set_size(logical_size);
-        let _ = window.set_always_on_top(true);
+        let hotkey_time_opt = *crate::transcribe::DIAGNOSTIC_HOTKEY_TIME.lock().unwrap();
+        if let Some(hotkey_time) = hotkey_time_opt {
+            let elapsed_ms = hotkey_time.elapsed().as_millis();
+            trace_log.push_str(&format!("9. Timing: {}ms from hotkey press to overlay show\n", elapsed_ms));
+        } else {
+            trace_log.push_str("9. Timing: unknown (hotkey time not set)\n");
+        }
+    
+    crate::log_debug(&format!("{}===================", trace_log));
 
-        let _ = window.show();
-    }
+    let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
+        x_phys.round() as i32,
+        y_phys.round() as i32,
+    )));
+    let _ = window.set_size(logical_size);
+    let _ = window.set_always_on_top(true);
+
+    crate::log_debug("[OVERLAY_EVENT] Window SHOW (reason: overlay display logic executed)");
+    let _ = window.show();
+}
 }
 
 #[tauri::command]
@@ -224,7 +241,18 @@ fn restart_app(app: tauri::AppHandle) {
 
 #[tauri::command]
 fn hide_overlay(app: tauri::AppHandle) {
+    {
+        use tauri::Manager;
+        let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<crate::audio::AudioState>>>();
+        let state = state_arc.inner().lock().unwrap();
+        if state.is_recording || state.is_processing {
+            crate::log_debug("[OVERLAY_EVENT] Window HIDE ignored (reason: currently recording/processing, delayed IPC command)");
+            return;
+        }
+    }
+
     if let Some(window) = app.get_webview_window("overlay") {
+        crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: hide_overlay command called)");
         if let Ok(hwnd) = window.hwnd() {
             use windows::Win32::Foundation::HWND;
             use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};

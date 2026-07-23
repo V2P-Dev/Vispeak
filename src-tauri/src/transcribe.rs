@@ -8,7 +8,13 @@ use transcribe_rs::onnx::gigaam::{GigaAMModel, GigaAMParams};
 use transcribe_rs::onnx::parakeet::{ParakeetModel, ParakeetParams, TimestampGranularity};
 use transcribe_rs::onnx::Quantization;
 
-static LOADED_MODEL_ID: Mutex<Option<String>> = Mutex::new(None);
+lazy_static::lazy_static! {
+    pub static ref LOADED_MODEL_ID: Mutex<Option<String>> = Mutex::new(None);
+    pub static ref DIAGNOSTIC_LAST_ACTIVITY: Mutex<std::time::Instant> = Mutex::new(std::time::Instant::now());
+    pub static ref DIAGNOSTIC_HOTKEY_PRESS_COUNT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    pub static ref DIAGNOSTIC_MODEL_STATE: Mutex<String> = Mutex::new("Unloaded".to_string());
+    pub static ref DIAGNOSTIC_HOTKEY_TIME: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+}
 
 pub fn is_model_loaded(model_id: &str) -> bool {
     let guard = LOADED_MODEL_ID.lock().unwrap();
@@ -186,13 +192,28 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                         settings.auto_unload_idle_minutes as u64 * 60,
                     );
                     if last_activity.elapsed() >= idle_dur {
-                        active_model = None;
-                        active_model_id = None;
-                        *LOADED_MODEL_ID.lock().unwrap() = None;
+                        let mut is_busy = false;
                         if let Some(app) = &last_app {
-                            let _ = app.emit("model-unloaded", ());
+                            let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<
+                                crate::audio::AudioState,
+                            >>>();
+                            let state = state_arc.inner().lock().unwrap();
+                            is_busy = state.is_recording || state.is_processing;
                         }
-                        println!("[info][transcribe] Model unloaded due to idle timeout");
+
+                        if is_busy {
+                            last_activity = std::time::Instant::now();
+                        } else {
+                            active_model = None;
+                            active_model_id = None;
+                            *LOADED_MODEL_ID.lock().unwrap() = None;
+                            *DIAGNOSTIC_MODEL_STATE.lock().unwrap() = "Unloaded".to_string();
+                            DIAGNOSTIC_HOTKEY_PRESS_COUNT.store(0, std::sync::atomic::Ordering::SeqCst);
+                            if let Some(app) = &last_app {
+                                let _ = app.emit("model-unloaded", ());
+                            }
+                            println!("[info][transcribe] Model unloaded due to idle timeout");
+                        }
                     }
                 }
                 continue;
@@ -409,6 +430,8 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                     continue;
                 }
 
+                *DIAGNOSTIC_LAST_ACTIVITY.lock().unwrap() = std::time::Instant::now();
+                
                 let is_processing = {
                     let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<
                         crate::audio::AudioState,
@@ -418,6 +441,21 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                     state.is_processing = false;
                     was_processing
                 };
+
+                if active_model.is_none() {
+                    *DIAGNOSTIC_MODEL_STATE.lock().unwrap() = "Loading".to_string();
+                    let loaded = load_model_instance(&app, &req.model_id);
+                    if let Some(m) = loaded {
+                        active_model = Some(m);
+                        active_model_id = Some(req.model_id.clone());
+                        *LOADED_MODEL_ID.lock().unwrap() = Some(req.model_id.clone());
+                        let _ = app.emit("model-loaded", ());
+                        *DIAGNOSTIC_MODEL_STATE.lock().unwrap() = "Loaded".to_string();
+                    } else {
+                        *DIAGNOSTIC_MODEL_STATE.lock().unwrap() = "Unloaded (Load Failed)".to_string();
+                        continue;
+                    }
+                }
 
                 if is_processing {
                     if text.is_empty() {
@@ -468,10 +506,20 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                         req.samples,
                     );
 
-                    if is_copy {
-                        let _ = app.emit("transcription-done", format!("COPIED:{}", text));
-                    } else {
-                        let _ = app.emit("transcription-done", text);
+                    let is_recording_now = {
+                        let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<
+                            crate::audio::AudioState,
+                        >>>();
+                        let state = state_arc.inner().lock().unwrap();
+                        state.is_recording
+                    };
+
+                    if !is_recording_now {
+                        if is_copy {
+                            let _ = app.emit("transcription-done", format!("COPIED:{}", text));
+                        } else {
+                            let _ = app.emit("transcription-done", text);
+                        }
                     }
                 }
                 last_activity = std::time::Instant::now();

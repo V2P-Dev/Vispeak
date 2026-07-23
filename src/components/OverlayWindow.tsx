@@ -99,6 +99,15 @@ function useOverlayState() {
   const [lang, setLang] = useState<Language>("en");
   const [skin, setSkin] = useState<"full" | "compact" | "mini" | string>("full");
 
+  const hideTimeoutRef = useRef<number | null>(null);
+
+  const clearHideTimeout = () => {
+    if (hideTimeoutRef.current !== null) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+  };
+
   useEffect(() => {
     invoke<any>("get_settings").then(settings => {
       setLang(getLanguage(settings.app_language));
@@ -124,6 +133,7 @@ function useOverlayState() {
     });
     
     const unlistenStarted = listen("recording-started", () => {
+      clearHideTimeout();
       setStatusText(t(lang, "overlay.recording")); // In compact, text is "Listening", we can override in component
       setIsRecording(true);
       setIsProcessing(false);
@@ -171,7 +181,8 @@ function useOverlayState() {
         setIsError(false);
       }
       
-      setTimeout(() => {
+      clearHideTimeout();
+      hideTimeoutRef.current = window.setTimeout(() => {
         invoke("hide_overlay");
       }, 1500);
     });
@@ -184,13 +195,15 @@ function useOverlayState() {
       setIsSuccess(false);
       setIsError(true);
       
-      setTimeout(() => {
+      clearHideTimeout();
+      hideTimeoutRef.current = window.setTimeout(() => {
         invoke("hide_overlay");
         setErrorText(null);
       }, 2000);
     });
 
     const unlistenCancelled = listen("recording-cancelled", () => {
+      clearHideTimeout();
       setIsRecording(false);
       setIsProcessing(false);
       setIsSuccess(false);
@@ -198,6 +211,7 @@ function useOverlayState() {
     });
 
     const unlistenCancelledSilently = listen("recording-cancelled-silently", () => {
+      clearHideTimeout();
       setIsRecording(false);
       setIsProcessing(false);
       setIsSuccess(false);
