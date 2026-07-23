@@ -1,11 +1,11 @@
 ## What's changed
 **Improved**
-- Убран оранжевый контур (stroke) у оверлея во всех скинах, оставлено только мягкое свечение.
-- Немного уменьшен общий размер интерфейса и шрифтов в режимах "Полный" и "Компактный".
-- Анимации появления и исчезновения оверлея теперь полностью идентичны (плавный fade-in / fade-out) и работают гладко во всех сценариях отмены или успешной диктовки.
+- Removed the orange border (stroke) from the overlay across all skins, leaving only the soft glow effect.
+- Slightly reduced the overall interface and font sizes in the "Full" and "Compact" modes.
+- Overlay appearance and disappearance animations are now completely identical (smooth fade-in / fade-out) and work seamlessly across all cancellation or successful dictation scenarios.
 
 **Fixed**
-- Исправлено ложное срабатывание ошибки "Нет доступа к микрофону" на микрофонах с агрессивным шумоподавлением (отключающих аудиопоток в условиях полной тишины).
+- Fixed a false "No microphone access" error that occurred on microphones with aggressive noise suppression (which completely muted the audio stream in perfect silence).
 
 ---
 📥 Download the installer from the Assets below.

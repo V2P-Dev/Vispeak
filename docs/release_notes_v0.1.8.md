@@ -1,6 +1,6 @@
 ## What's changed
 **Fixed**
-- Хотфикс: исправлены невидимые физические рамки окна оверлея (не попали в предыдущий релиз из-за сбоя CI/сборки), теперь окно точно соответствует уменьшенному визуальному размеру компонентов.
+- Hotfix: Fixed invisible physical window borders for the overlay (missed in the previous release). The window size now exactly matches the reduced visual size of the components.
 
 ---
 📥 Download the installer from the Assets below.
