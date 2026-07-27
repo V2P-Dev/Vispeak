@@ -22,6 +22,11 @@ export function HistoryPage({ lang }: HistoryPageProps) {
   const [records, setRecords] = useState<HistoryRecord[]>([]);
   const [models, setModels] = useState<Record<string, string>>({});
   const [retranscribing, setRetranscribing] = useState<Record<number, boolean>>({});
+  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [pastingId, setPastingId] = useState<number | null>(null);
+  const [playingId, setPlayingId] = useState<number | null>(null);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const fetchHistory = async () => {
@@ -65,8 +70,12 @@ export function HistoryPage({ lang }: HistoryPageProps) {
     };
   }, []);
 
-  const handleCopy = (text: string) => {
+  const handleCopy = (id: number, text: string) => {
     navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => {
+      setCopiedId(prev => (prev === id ? null : prev));
+    }, 1500);
   };
 
   const handleDelete = async (id: number) => {
@@ -85,22 +94,51 @@ export function HistoryPage({ lang }: HistoryPageProps) {
   };
 
   const handlePlay = async (id: number) => {
+    console.log("[Play audio] Clicked play for ID:", id);
+    const record = records.find(rec => rec.id === id);
+    console.log("[Play audio] record.has_audio =", record?.has_audio);
+
+    if (playingId === id) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      setPlayingId(null);
+      setCurrentTime(0);
+      return;
+    }
+
     try {
       const path = await invoke<string>("get_history_audio_path", { id });
+      console.log("[Play audio] Path from backend:", path);
       const url = convertFileSrc(path);
+      console.log("[Play audio] URL from convertFileSrc:", url);
       
       if (audioRef.current) {
         audioRef.current.src = url;
-        audioRef.current.play();
+        setPlayingId(id);
+        setCurrentTime(0);
+        setDuration(record ? record.duration_sec : 0);
+        audioRef.current.play().catch(err => {
+          console.error("[Play audio] audioRef.current.play() FAILED:", err);
+          setPlayingId(null);
+          setCurrentTime(0);
+        });
       }
     } catch (e) {
-      console.error(e);
+      console.error("[Play audio] Exception in handlePlay:", e);
+      setPlayingId(null);
+      setCurrentTime(0);
     }
   };
 
   const handleRepeatPaste = async (id: number) => {
     try {
       await invoke("repeat_paste_history_record", { id });
+      setPastingId(id);
+      setTimeout(() => {
+        setPastingId(prev => (prev === id ? null : prev));
+      }, 1500);
     } catch (e) {
       console.error(e);
     }
@@ -124,7 +162,25 @@ export function HistoryPage({ lang }: HistoryPageProps) {
         </p>
       </div>
 
-      <audio ref={audioRef} style={{ display: 'none' }} />
+      <audio
+        ref={audioRef}
+        style={{ display: "none" }}
+        onTimeUpdate={() => {
+          if (audioRef.current) setCurrentTime(audioRef.current.currentTime);
+        }}
+        onEnded={() => {
+          setPlayingId(null);
+          setCurrentTime(0);
+        }}
+        onError={(e) => {
+          const target = e.currentTarget;
+          console.error("[Play audio] <audio> onError fired!", e, "error code:", target.error?.code, "message:", target.error?.message);
+          if (playingId !== null) {
+            setPlayingId(null);
+            setCurrentTime(0);
+          }
+        }}
+      />
 
       {records.length === 0 ? (
         <div className="text-center text-secondary mt-20">
@@ -168,22 +224,72 @@ export function HistoryPage({ lang }: HistoryPageProps) {
                 {r.text}
               </div>
 
+              {playingId === r.id && (
+                <div className="w-full bg-border/60 rounded-full h-1 my-1 overflow-hidden">
+                  <div
+                    className="bg-accent h-full transition-all duration-100 ease-linear"
+                    style={{ width: `${Math.min(100, (currentTime / (duration || r.duration_sec || 1)) * 100)}%` }}
+                  />
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2 mt-1">
-                {r.has_audio && (
-                  <button onClick={() => handlePlay(r.id)} className="px-3 py-1.5 bg-window border border-border rounded-lg text-sm font-medium text-primary hover:border-secondary/40 transition-colors flex items-center gap-1.5">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    {t(lang, "history.play")}
-                  </button>
-                )}
-                
-                <button onClick={() => handleCopy(r.text)} className="px-3 py-1.5 bg-window border border-border rounded-lg text-sm font-medium text-primary hover:border-secondary/40 transition-colors flex items-center gap-1.5">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                  {t(lang, "history.copy")}
+                <button
+                  onClick={() => handlePlay(r.id)}
+                  disabled={!r.has_audio}
+                  title={!r.has_audio ? t(lang, "history.audio_unavailable") : undefined}
+                  className={`px-3 py-1.5 bg-window border rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    playingId === r.id
+                      ? "border-accent text-primary"
+                      : "border-border text-primary hover:border-secondary/40"
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  {playingId === r.id ? (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><rect x="6" y="6" width="12" height="12" rx="1" /></svg>
+                      {t(lang, "history.stop")}
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      {t(lang, "history.play")}
+                    </>
+                  )}
                 </button>
                 
-                <button onClick={() => handleRepeatPaste(r.id)} className="px-3 py-1.5 bg-window border border-border rounded-lg text-sm font-medium text-primary hover:border-secondary/40 transition-colors flex items-center gap-1.5" title={t(lang, "history.repeat_paste_hint")}>
+                <button
+                  onClick={() => handleCopy(r.id, r.text)}
+                  title={t(lang, "history.copy_tooltip")}
+                  className={`px-3 py-1.5 bg-window border rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    copiedId === r.id
+                      ? "border-success/60 text-success"
+                      : "border-border text-primary hover:border-secondary/40"
+                  }`}
+                >
+                  {copiedId === r.id ? (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                      {t(lang, "history.copied")}
+                    </>
+                  ) : (
+                    <>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      {t(lang, "history.copy")}
+                    </>
+                  )}
+                </button>
+                
+                <button
+                  onClick={() => handleRepeatPaste(r.id)}
+                  title={t(lang, "history.repeat_paste_tooltip")}
+                  className={`px-3 py-1.5 bg-window border rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                    pastingId === r.id
+                      ? "border-accent text-primary animate-pulse"
+                      : "border-border text-primary hover:border-secondary/40"
+                  }`}
+                >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                  {t(lang, "history.repeat_paste")}
+                  {pastingId === r.id ? t(lang, "history.repeat_paste_active") : t(lang, "history.repeat_paste")}
                 </button>
 
                 {r.has_audio && (

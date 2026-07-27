@@ -76,7 +76,7 @@ export function AboutPage({ lang, onShowUpdate }: AboutPageProps) {
               
               {checkStatus !== "idle" && (
                 <div className="flex flex-col items-center mt-2">
-                  <span className={`text-xs font-medium text-center ${checkStatus === "up-to-date" ? "text-success" : "text-accent"}`}>
+                  <span className={`text-xs font-medium text-center ${checkStatus === "up-to-date" ? "text-success" : "text-primary"}`}>
                     {t(lang, `updater_status.${checkStatus}`)}
                   </span>
                 </div>

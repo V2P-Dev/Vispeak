@@ -57,6 +57,8 @@ pub struct Settings {
     pub history_limit: u32,
     #[serde(default = "default_auto_unload_idle_minutes")]
     pub auto_unload_idle_minutes: u32,
+    #[serde(default = "default_accent_color")]
+    pub accent_color: String,
 }
 
 fn default_auto_unload_idle_minutes() -> u32 {
@@ -83,6 +85,9 @@ fn default_app_language() -> String {
 }
 fn default_theme() -> String {
     "system".to_string()
+}
+fn default_accent_color() -> String {
+    "orange".to_string()
 }
 fn default_true() -> bool {
     true
@@ -122,6 +127,7 @@ impl Default for Settings {
             overlay_position: default_overlay_position(),
             app_language: default_app_language(),
             theme: default_theme(),
+            accent_color: default_accent_color(),
             history_limit: default_history_limit(),
             auto_unload_idle_minutes: default_auto_unload_idle_minutes(),
         }

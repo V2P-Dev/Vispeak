@@ -27,8 +27,25 @@ export function GeneralPage({ lang }: GeneralPageProps) {
 
   const [appLanguage, setAppLanguage] = useState<string>("system");
   const [theme, setTheme] = useState<string>("system");
+  const [accent, setAccent] = useState<string>("orange");
+  const [effectiveTheme, setEffectiveTheme] = useState<"dark" | "light">("dark");
   const [pendingLanguage, setPendingLanguage] = useState<string | null>(null);
   const [hasPendingRestart, setHasPendingRestart] = useState(false);
+
+  const computeEffectiveTheme = (tVal: string): "dark" | "light" => {
+    if (tVal === "system") {
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    return tVal === "light" ? "light" : "dark";
+  };
+
+  useEffect(() => {
+    setEffectiveTheme(computeEffectiveTheme(theme));
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => setEffectiveTheme(computeEffectiveTheme(theme));
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, [theme]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -63,6 +80,8 @@ export function GeneralPage({ lang }: GeneralPageProps) {
       if (s.auto_unload_idle_minutes !== undefined) setAutoUnload(s.auto_unload_idle_minutes);
       if (s.app_language) setAppLanguage(s.app_language);
       if (s.theme) setTheme(s.theme); else setTheme("system");
+      if (s.accent_color) setAccent(s.accent_color); else setAccent("orange");
+      setEffectiveTheme(computeEffectiveTheme(s.theme || "system"));
     });
     
     // Start preview when general page opens
@@ -105,7 +124,12 @@ export function GeneralPage({ lang }: GeneralPageProps) {
       if (key === "overlay_position") setPosition(value);
       if (key === "theme") {
         setTheme(value);
-        applyThemeToDocument(value);
+        setEffectiveTheme(computeEffectiveTheme(value));
+        applyThemeToDocument(value, accent);
+      }
+      if (key === "accent_color") {
+        setAccent(value);
+        applyThemeToDocument(theme, value);
       }
       if (key === "app_language") {
         setAppLanguage(value);
@@ -209,7 +233,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
                     </div>
                  </div>
               </div>
-              <span className={`text-sm font-medium ${theme === "system" ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium text-primary">
                 {t(lang, "general.theme_system")}
               </span>
             </button>
@@ -224,7 +248,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
                     <div className="flex-1 h-1.5 bg-[#8e8e93]/30 rounded-full"></div>
                  </div>
               </div>
-              <span className={`text-sm font-medium ${theme === "dark" ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium text-primary">
                 {t(lang, "general.theme_dark")}
               </span>
             </button>
@@ -239,11 +263,69 @@ export function GeneralPage({ lang }: GeneralPageProps) {
                     <div className="flex-1 h-1.5 bg-[#6e6e73]/30 rounded-full"></div>
                  </div>
               </div>
-              <span className={`text-sm font-medium ${theme === "light" ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium text-primary">
                 {t(lang, "general.theme_light")}
               </span>
             </button>
           </div>
+        </div>
+
+        {/* Accent Color */}
+        <div className="p-5 bg-surface border border-border rounded-2xl flex flex-col gap-4">
+          <label className="text-base font-medium text-primary">
+            {t(lang, "general.accent_color")}
+          </label>
+          <div className="flex gap-4">
+            <button
+              onClick={() => updateSetting("accent_color", "orange")}
+              className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${accent === "orange" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
+            >
+              <div className="w-full h-16 rounded-lg border border-border/50 flex items-center justify-center p-2 bg-overlay">
+                 <div className="w-8 h-8 rounded-full bg-[#ff5533] shadow-[0_0_12px_rgba(255,85,51,0.5)] flex items-center justify-center">
+                   <div className="w-3 h-3 rounded-full bg-[#0d0d0d]/40"></div>
+                 </div>
+              </div>
+              <span className="text-sm font-medium text-primary">
+                {t(lang, "general.accent_orange")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => updateSetting("accent_color", "white")}
+              className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${accent === "white" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
+            >
+              <div className="w-full h-16 rounded-lg border border-border/50 flex items-center justify-center p-2 bg-overlay">
+                 <div className="w-8 h-8 rounded-full bg-[#ffffff] shadow-[0_0_12px_rgba(255,255,255,0.4)] border border-[#e4e4e7] flex items-center justify-center">
+                   <div className="w-3 h-3 rounded-full bg-[#0d0d0d]"></div>
+                 </div>
+              </div>
+              <span className="text-sm font-medium text-primary">
+                {t(lang, "general.accent_white")}
+              </span>
+            </button>
+
+            <button
+              onClick={() => updateSetting("accent_color", "black")}
+              className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${accent === "black" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
+            >
+              <div className="w-full h-16 rounded-lg border border-border/50 flex items-center justify-center p-2 bg-overlay">
+                 <div className="w-8 h-8 rounded-full bg-[#0d0d0d] shadow-[0_0_12px_rgba(0,0,0,0.5)] border border-[#2a2a2e] flex items-center justify-center">
+                   <div className="w-3 h-3 rounded-full bg-[#ffffff]"></div>
+                 </div>
+              </div>
+              <span className="text-sm font-medium text-primary">
+                {t(lang, "general.accent_black")}
+              </span>
+            </button>
+          </div>
+          {((accent === "black" && effectiveTheme === "dark") || (accent === "white" && effectiveTheme === "light")) && (
+            <div className="text-xs text-secondary bg-window p-3 rounded-xl border border-border/50 leading-relaxed flex items-center gap-2">
+              <Info className="w-4 h-4 text-secondary shrink-0" />
+              <span>
+                {accent === "black" ? t(lang, "general.accent_warn_black_dark") : t(lang, "general.accent_warn_white_light")}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Microphone */}
@@ -288,7 +370,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               {gain !== 1.0 && (
                 <button 
                   onClick={() => updateSetting("microphone_gain", 1.0)}
-                  className="text-xs text-accent hover:opacity-80 transition-opacity"
+                  className="text-xs text-secondary hover:text-primary underline transition-colors"
                 >
                   {t(lang, "general.reset")}
                 </button>
@@ -527,7 +609,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
                     <div className="w-1/2 h-1 bg-accent/50 rounded-full"></div>
                  </div>
               </div>
-              <span className={`text-sm font-medium ${skin === "full" ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium text-primary">
                 {t(lang, "general.skin_full")}
               </span>
             </button>
@@ -536,13 +618,13 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               onClick={() => updateSetting("overlay_skin", "compact")}
               className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${skin === "compact" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
             >
-              <div className="w-full h-16 bg-window rounded-lg flex flex-col items-center justify-center gap-1.5 relative border border-border/40">
-                 <div className="w-[60%] h-6 bg-overlay rounded-full border border-border/50 flex items-center px-2 gap-2">
-                    <div className="w-2 h-2 rounded-full bg-accent/80"></div>
-                    <div className="flex-1 h-1 bg-accent/30 rounded-full"></div>
+                 <div className="w-full h-16 bg-window rounded-lg flex flex-col justify-center p-2 gap-1.5 relative border border-border/40">
+                    <div className="flex justify-between items-center w-full">
+                       <div className="w-10 h-2 bg-secondary/30 rounded-full"></div>
+                       <div className="w-6 h-2 bg-secondary/20 rounded-full"></div>
+                    </div>
                  </div>
-              </div>
-              <span className={`text-sm font-medium ${skin === "compact" ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium text-primary">
                 {t(lang, "general.skin_compact")}
               </span>
             </button>
@@ -556,7 +638,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
                     <div className="w-full h-1 bg-accent/60 rounded-full"></div>
                  </div>
               </div>
-              <span className={`text-sm font-medium ${skin === "mini" ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium text-primary">
                 {t(lang, "general.skin_mini")}
               </span>
             </button>

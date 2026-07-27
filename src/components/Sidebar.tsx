@@ -114,7 +114,7 @@ export function Sidebar({ activePage, onPageChange, lang, onShowUpdate }: Sideba
               {isActive && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-accent rounded-r-full shadow-[var(--shadow-accent-sm)]" />
               )}
-              <div className={`${isActive ? "text-accent" : ""}`}>
+              <div className={`${isActive ? "text-primary" : ""}`}>
                 {item.icon}
               </div>
               <span className={`font-medium ${isActive ? "font-semibold" : ""}`}>

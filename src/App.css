@@ -11,6 +11,7 @@
   --color-accent-text: var(--accent-text);
   --color-success: var(--success);
   --color-processing: var(--processing);
+  --color-error: var(--error);
   --color-knob: var(--knob);
   
   --radius-xl: 16px;
@@ -34,10 +35,10 @@
 
   @keyframes glow-pulse-accent {
     0%, 100% {
-      box-shadow: 0 0 16px rgba(255, 85, 51, 0.2);
+      box-shadow: 0 0 16px var(--glow-min);
     }
     50% {
-      box-shadow: 0 0 32px rgba(255, 85, 51, 0.45);
+      box-shadow: 0 0 32px var(--glow-max);
     }
   }
 }
@@ -54,7 +55,11 @@
     --accent-text: #0d0d0d;
     --success: #7ed491;
     --processing: #4dd8e6;
+    --error: #ff5533;
     --knob: #f5f5f7;
+
+    --glow-min: rgba(255, 85, 51, 0.2);
+    --glow-max: rgba(255, 85, 51, 0.45);
 
     --shadow-accent-xs: 0 0 6px rgba(255, 85, 51, 0.4);
     --shadow-accent-sm: 0 0 8px rgba(255, 85, 51, 0.6);
@@ -76,7 +81,11 @@
     --accent-text: #ffffff;
     --success: #34a862;
     --processing: #0899ab;
+    --error: #e84a2b;
     --knob: #ffffff;
+
+    --glow-min: rgba(232, 74, 43, 0.2);
+    --glow-max: rgba(232, 74, 43, 0.45);
 
     --shadow-accent-xs: 0 2px 6px rgba(232, 74, 43, 0.15);
     --shadow-accent-sm: 0 2px 8px rgba(232, 74, 43, 0.2);
@@ -98,12 +107,72 @@
     --accent-text: #0d0d0d;
     --success: #7ed491;
     --processing: #4dd8e6;
+    --error: #ff5533;
     --knob: #f5f5f7;
+
+    --glow-min: rgba(255, 85, 51, 0.2);
+    --glow-max: rgba(255, 85, 51, 0.45);
 
     --shadow-accent-xs: 0 0 6px rgba(255, 85, 51, 0.4);
     --shadow-accent-sm: 0 0 8px rgba(255, 85, 51, 0.6);
     --shadow-accent-md: 0 0 12px rgba(255, 85, 51, 0.3);
     --shadow-accent-lg: 0 0 30px rgba(255, 85, 51, 0.15);
+  }
+
+  :root[data-accent="white"],
+  html[data-accent="white"],
+  body[data-accent="white"],
+  [data-accent="white"] {
+    --accent: #ffffff;
+    --accent-text: #0d0d0d;
+    --shadow-accent-xs: 0 0 6px rgba(255, 255, 255, 0.4);
+    --shadow-accent-sm: 0 0 8px rgba(255, 255, 255, 0.6);
+    --shadow-accent-md: 0 0 12px rgba(255, 255, 255, 0.3);
+    --shadow-accent-lg: 0 0 30px rgba(255, 255, 255, 0.15);
+    --glow-min: rgba(255, 255, 255, 0.2);
+    --glow-max: rgba(255, 255, 255, 0.45);
+  }
+
+  :root[data-theme="light"][data-accent="white"],
+  html[data-theme="light"][data-accent="white"],
+  body[data-theme="light"][data-accent="white"],
+  [data-theme="light"][data-accent="white"] {
+    --accent: #ffffff;
+    --accent-text: #0d0d0d;
+    --shadow-accent-xs: 0 2px 6px rgba(255, 255, 255, 0.3);
+    --shadow-accent-sm: 0 2px 8px rgba(255, 255, 255, 0.4);
+    --shadow-accent-md: 0 4px 12px rgba(255, 255, 255, 0.3);
+    --shadow-accent-lg: 0 8px 24px rgba(255, 255, 255, 0.2);
+    --glow-min: rgba(255, 255, 255, 0.2);
+    --glow-max: rgba(255, 255, 255, 0.45);
+  }
+
+  :root[data-accent="black"],
+  html[data-accent="black"],
+  body[data-accent="black"],
+  [data-accent="black"] {
+    --accent: #0d0d0d;
+    --accent-text: #ffffff;
+    --shadow-accent-xs: 0 0 6px rgba(13, 13, 13, 0.4);
+    --shadow-accent-sm: 0 0 8px rgba(13, 13, 13, 0.6);
+    --shadow-accent-md: 0 0 12px rgba(13, 13, 13, 0.3);
+    --shadow-accent-lg: 0 0 30px rgba(13, 13, 13, 0.15);
+    --glow-min: rgba(13, 13, 13, 0.2);
+    --glow-max: rgba(13, 13, 13, 0.45);
+  }
+
+  :root[data-theme="light"][data-accent="black"],
+  html[data-theme="light"][data-accent="black"],
+  body[data-theme="light"][data-accent="black"],
+  [data-theme="light"][data-accent="black"] {
+    --accent: #0d0d0d;
+    --accent-text: #ffffff;
+    --shadow-accent-xs: 0 2px 6px rgba(13, 13, 13, 0.2);
+    --shadow-accent-sm: 0 2px 8px rgba(13, 13, 13, 0.3);
+    --shadow-accent-md: 0 4px 12px rgba(13, 13, 13, 0.2);
+    --shadow-accent-lg: 0 8px 24px rgba(13, 13, 13, 0.15);
+    --glow-min: rgba(13, 13, 13, 0.2);
+    --glow-max: rgba(13, 13, 13, 0.45);
   }
 
   body {

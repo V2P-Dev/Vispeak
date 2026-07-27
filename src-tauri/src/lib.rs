@@ -433,7 +433,8 @@ pub fn run() {
             history::get_history_size,
             history::retranscribe_history_record,
             history::update_history_record_text,
-            history::repeat_paste_history_record
+            history::repeat_paste_history_record,
+            history::get_history_audio_path
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

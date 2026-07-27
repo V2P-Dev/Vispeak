@@ -19,15 +19,17 @@ function App() {
     // For MainWindow and OverlayWindow, fetch initial theme setting from Rust backend
     invoke<any>("get_settings").then((settings) => {
       const t = settings.theme || "system";
+      const a = settings.accent_color || "orange";
       setThemeSetting(t);
-      applyThemeToDocument(t);
+      applyThemeToDocument(t, a);
     }).catch(console.error);
 
     const unlistenSettings = listen("settings-updated", () => {
       invoke<any>("get_settings").then((settings) => {
         const t = settings.theme || "system";
+        const a = settings.accent_color || "orange";
         setThemeSetting(t);
-        applyThemeToDocument(t);
+        applyThemeToDocument(t, a);
       }).catch(console.error);
     });
 
@@ -36,8 +38,9 @@ function App() {
     const handleSystemThemeChange = () => {
       invoke<any>("get_settings").then((settings) => {
         const t = settings.theme || "system";
+        const a = settings.accent_color || "orange";
         if (t === "system") {
-          applyThemeToDocument("system");
+          applyThemeToDocument("system", a);
         }
       }).catch(console.error);
     };

@@ -320,7 +320,7 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
             </span>
           )}
           {isError && (
-            <span className="text-accent text-xs font-medium text-center">
+            <span className="text-error text-xs font-medium text-center">
               {errorText || t(lang, "overlay.error_no_mic")}
             </span>
           )}
@@ -426,11 +426,11 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
 
         {/* ERROR STATE */}
         <div className={`absolute inset-0 px-4 flex flex-row items-center transition-opacity duration-200 ${isError ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5 text-accent shrink-0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5 text-error shrink-0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
              <line x1="18" y1="6" x2="6" y2="18"></line>
              <line x1="6" y1="6" x2="18" y2="18"></line>
            </svg>
-           <span className="text-accent text-xs font-medium truncate flex-1 ml-2 text-center">
+           <span className="text-error text-xs font-medium truncate flex-1 ml-2 text-center">
              {errorText || t(lang, "overlay.error_no_mic")}
            </span>
         </div>
@@ -519,7 +519,7 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
 
         {/* ERROR STATE */}
         <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isError ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-accent" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-error" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
              <line x1="18" y1="6" x2="6" y2="18"></line>
              <line x1="6" y1="6" x2="18" y2="18"></line>
            </svg>

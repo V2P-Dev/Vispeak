@@ -234,7 +234,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
               onKeyDown={(e) => handleKeyDown(e, false)}
               onKeyUp={(e) => handleKeyUp(e, false)}
             >
-              <span className={`text-sm font-medium tracking-wide ${isRecordingHotkey ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium tracking-wide text-primary">
                 {isRecordingHotkey ? (inputHotkey ? formatHotkey(inputHotkey) : "...") : formatHotkey(currentHotkey)}
               </span>
             </div>
@@ -292,7 +292,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
               onKeyDown={(e) => handleKeyDown(e, true)}
               onKeyUp={(e) => handleKeyUp(e, true)}
             >
-              <span className={`text-sm font-medium tracking-wide ${isRecordingCancelHotkey ? 'text-accent' : 'text-primary'}`}>
+              <span className="text-sm font-medium tracking-wide text-primary">
                 {isRecordingCancelHotkey ? (inputCancelHotkey ? formatHotkey(inputCancelHotkey) : "...") : formatHotkey(currentCancelHotkey)}
               </span>
             </div>
@@ -480,7 +480,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
       )}
 
       {error && (
-        <div className="mt-4 p-3 bg-accent/10 border border-accent/20 rounded-xl text-accent text-sm flex items-center gap-2">
+        <div className="mt-4 p-3 bg-error/10 border border-error/20 rounded-xl text-error text-sm flex items-center gap-2">
           <Info className="w-4 h-4" />
           {error.includes("conflict") ? t(lang, "controls.conflict") : error}
         </div>

@@ -32,7 +32,22 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": [
+          "**",
+          "**/*",
+          "$APPDATA/**",
+          "$LOCALAPPDATA/**",
+          "$APPCONFIG/**",
+          "$APPLOCALDATA/**",
+          "C:/**",
+          "C:\\**",
+          "C:/*/**",
+          "C:\\*\\**"
+        ]
+      }
     }
   },
   "bundle": {

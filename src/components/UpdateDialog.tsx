@@ -69,7 +69,7 @@ export function UpdateDialog({ update, lang, onClose }: UpdateDialogProps) {
             <p className="text-xs mt-3">
               {t(lang, "updater_status.see_github")}
               <button 
-                className="text-accent hover:underline cursor-pointer transition-colors"
+                className="text-primary underline hover:opacity-80 cursor-pointer transition-colors"
                 onClick={() => openUrl(`https://github.com/V2P-Dev/Vispeak/releases/tag/v${update.version}`)}
               >
                 {t(lang, "updater_status.release_notes_github")}
@@ -79,7 +79,7 @@ export function UpdateDialog({ update, lang, onClose }: UpdateDialogProps) {
         </div>
 
         {error && (
-          <div className="px-6 py-3 bg-accent/10 border-y border-accent/20 text-accent text-sm">
+          <div className="px-6 py-3 bg-error/10 border-y border-error/20 text-error text-sm">
             {lang === "ru" ? "Ошибка обновления: " : "Update error: "}{error}
           </div>
         )}

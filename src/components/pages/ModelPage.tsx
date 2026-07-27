@@ -119,7 +119,7 @@ export function ModelPage({ lang, models, downloading, progressMap, onDownload, 
                 
                 <div className="flex flex-wrap justify-end items-center gap-2">
                   {isActive && (
-                    <div className="px-3.5 py-1.5 rounded-full border border-accent/40 text-accent text-xs font-semibold flex items-center gap-2 mr-2">
+                    <div className="px-3.5 py-1.5 rounded-full border border-accent/40 text-primary text-xs font-semibold flex items-center gap-2 mr-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-accent shadow-[0_0_6px_currentColor]"></span>
                       {t(lang, "model.active")}
                     </div>
@@ -133,7 +133,7 @@ export function ModelPage({ lang, models, downloading, progressMap, onDownload, 
                     </div>
                   )}
                   {(MODEL_TAGS[m.id] || []).map(tag => (
-                    <div key={tag} className={`px-3 py-1.5 rounded-full ${tag === 'Recommended' ? 'bg-accent/10 text-accent font-semibold border border-accent/20' : 'bg-border/60 text-secondary'} text-[11px] font-medium tracking-wide`}>
+                    <div key={tag} className={`px-3 py-1.5 rounded-full ${tag === 'Recommended' ? 'bg-accent/10 text-primary font-semibold border border-accent/20' : 'bg-border/60 text-secondary'} text-[11px] font-medium tracking-wide`}>
                       {t(lang, `model.tags.${tag}`)}
                     </div>
                   ))}
@@ -200,7 +200,7 @@ export function ModelPage({ lang, models, downloading, progressMap, onDownload, 
 
                     {isDownloading && (
                       <div className="px-5 py-2 bg-window border border-border rounded-full flex items-center gap-3 w-36">
-                        <span className="text-accent text-[11px] font-bold shrink-0">{progress.toFixed(0)}%</span>
+                        <span className="text-primary text-[11px] font-bold shrink-0">{progress.toFixed(0)}%</span>
                         <div className="w-full bg-border rounded-full h-1 overflow-hidden">
                           <div 
                             className="bg-accent h-full transition-all duration-300 ease-out" 
