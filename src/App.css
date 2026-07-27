@@ -35,10 +35,10 @@
 
   @keyframes glow-pulse-accent {
     0%, 100% {
-      box-shadow: 0 0 16px var(--glow-min);
+      box-shadow: 0 0 12px var(--glow-min);
     }
     50% {
-      box-shadow: 0 0 32px var(--glow-max);
+      box-shadow: 0 0 20px var(--glow-max);
     }
   }
 }

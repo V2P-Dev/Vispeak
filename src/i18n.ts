@@ -114,7 +114,7 @@ export const translations = {
       send_after_tooltip: "Автоматически отправляет сообщение после вставки текста. Осторожно: текст уйдёт без возможности проверить",
       send_after_none: "Выключено",
       send_after_enter: "Enter",
-      send_after_ctrl_enter: "Ctrl+Enter",
+      send_after_ctrl_enter: "Ctrl+Enter"
     },
     general: {
       title: "Общие настройки",
@@ -214,6 +214,7 @@ export const translations = {
       recording: "Запись...",
       loading_model: "Загрузка модели...",
       processing: "Обработка...",
+      formatting: "Форматирование...",
       error_no_mic: "Нет доступа к микрофону",
       error_short: "Речь не распознана",
       cancel: "Esc — отмена",
@@ -354,7 +355,7 @@ export const translations = {
       send_after_tooltip: "Automatically sends message after pasting text. Caution: text will be sent without a chance to review",
       send_after_none: "Disabled",
       send_after_enter: "Enter",
-      send_after_ctrl_enter: "Ctrl+Enter",
+      send_after_ctrl_enter: "Ctrl+Enter"
     },
     general: {
       title: "General Settings",
@@ -454,6 +455,7 @@ export const translations = {
       recording: "Recording...",
       loading_model: "Loading model...",
       processing: "Processing...",
+      formatting: "Formatting...",
       error_no_mic: "No microphone access",
       error_short: "Speech not recognized",
       cancel: "Esc — cancel",

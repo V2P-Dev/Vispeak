@@ -340,3 +340,4 @@ pub fn delete_model(id: String) -> Result<(), String> {
     }
     Ok(())
 }
+

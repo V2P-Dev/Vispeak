@@ -277,12 +277,18 @@ export function GeneralPage({ lang }: GeneralPageProps) {
           </label>
           <div className="flex gap-4">
             <button
-              onClick={() => updateSetting("accent_color", "orange")}
+              onClick={async () => {
+                const newAccent = "orange";
+                await updateSetting("accent_color", newAccent);
+              }}
               className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${accent === "orange" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
             >
-              <div className="w-full h-16 rounded-lg border border-border/50 flex items-center justify-center p-2 bg-overlay">
-                 <div className="w-8 h-8 rounded-full bg-[#ff5533] shadow-[0_0_12px_rgba(255,85,51,0.5)] flex items-center justify-center">
-                   <div className="w-3 h-3 rounded-full bg-[#0d0d0d]/40"></div>
+              <div className="w-full h-16 bg-[#0d0d0d] rounded-lg border border-border/50 flex items-center justify-center p-2 relative overflow-hidden">
+                 <div className="w-24 h-8 bg-[#141414] rounded-full shadow-[0_0_16px_rgba(255,85,51,0.5)] flex items-center justify-center gap-1 px-3">
+                   <div className="w-1 h-2 bg-[#ff5533] rounded-full"></div>
+                   <div className="w-1 h-4 bg-[#ff5533] rounded-full"></div>
+                   <div className="w-1 h-3 bg-[#ff5533] rounded-full"></div>
+                   <div className="w-1 h-1.5 bg-[#ff5533] rounded-full"></div>
                  </div>
               </div>
               <span className="text-sm font-medium text-primary">
@@ -291,12 +297,29 @@ export function GeneralPage({ lang }: GeneralPageProps) {
             </button>
 
             <button
-              onClick={() => updateSetting("accent_color", "white")}
+              onClick={async () => {
+                const newAccent = "white";
+                const targetTheme = "dark";
+                try {
+                  await invoke("update_single_setting", { key: "accent_color", value: newAccent });
+                  await invoke("update_single_setting", { key: "theme", value: targetTheme });
+                  applyThemeToDocument(targetTheme, newAccent);
+                  setAccent(newAccent);
+                  setTheme(targetTheme);
+                  setEffectiveTheme(computeEffectiveTheme(targetTheme));
+                  await emit("settings-updated");
+                } catch (e) {
+                  console.error("[settings] Error setting white accent:", e);
+                }
+              }}
               className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${accent === "white" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
             >
-              <div className="w-full h-16 rounded-lg border border-border/50 flex items-center justify-center p-2 bg-overlay">
-                 <div className="w-8 h-8 rounded-full bg-[#ffffff] shadow-[0_0_12px_rgba(255,255,255,0.4)] border border-[#e4e4e7] flex items-center justify-center">
-                   <div className="w-3 h-3 rounded-full bg-[#0d0d0d]"></div>
+              <div className="w-full h-16 bg-[#0d0d0d] rounded-lg border border-border/50 flex items-center justify-center p-2 relative overflow-hidden">
+                 <div className="w-24 h-8 bg-[#141414] rounded-full shadow-[0_0_16px_rgba(255,255,255,0.4)] flex items-center justify-center gap-1 px-3">
+                   <div className="w-1 h-2 bg-white rounded-full"></div>
+                   <div className="w-1 h-4 bg-white rounded-full"></div>
+                   <div className="w-1 h-3 bg-white rounded-full"></div>
+                   <div className="w-1 h-1.5 bg-white rounded-full"></div>
                  </div>
               </div>
               <span className="text-sm font-medium text-primary">
@@ -305,12 +328,29 @@ export function GeneralPage({ lang }: GeneralPageProps) {
             </button>
 
             <button
-              onClick={() => updateSetting("accent_color", "black")}
+              onClick={async () => {
+                const newAccent = "black";
+                const targetTheme = "light";
+                try {
+                  await invoke("update_single_setting", { key: "accent_color", value: newAccent });
+                  await invoke("update_single_setting", { key: "theme", value: targetTheme });
+                  applyThemeToDocument(targetTheme, newAccent);
+                  setAccent(newAccent);
+                  setTheme(targetTheme);
+                  setEffectiveTheme(computeEffectiveTheme(targetTheme));
+                  await emit("settings-updated");
+                } catch (e) {
+                  console.error("[settings] Error setting black accent:", e);
+                }
+              }}
               className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${accent === "black" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
             >
-              <div className="w-full h-16 rounded-lg border border-border/50 flex items-center justify-center p-2 bg-overlay">
-                 <div className="w-8 h-8 rounded-full bg-[#0d0d0d] shadow-[0_0_12px_rgba(0,0,0,0.5)] border border-[#2a2a2e] flex items-center justify-center">
-                   <div className="w-3 h-3 rounded-full bg-[#ffffff]"></div>
+              <div className="w-full h-16 bg-[#f4f4f5] rounded-lg border border-border/50 flex items-center justify-center p-2 relative overflow-hidden">
+                 <div className="w-24 h-8 bg-white rounded-full shadow-[0_0_16px_rgba(0,0,0,0.45)] flex items-center justify-center gap-1 px-3">
+                   <div className="w-1 h-2 bg-[#0d0d0d] rounded-full"></div>
+                   <div className="w-1 h-4 bg-[#0d0d0d] rounded-full"></div>
+                   <div className="w-1 h-3 bg-[#0d0d0d] rounded-full"></div>
+                   <div className="w-1 h-1.5 bg-[#0d0d0d] rounded-full"></div>
                  </div>
               </div>
               <span className="text-sm font-medium text-primary">
@@ -423,7 +463,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${autostart ? 'bg-accent' : 'bg-border'}`}>
-              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${autostart ? 'translate-x-5' : 'translate-x-0'}`} />
+              <div className={`w-4 h-4 rounded-full transition-transform ${autostart ? 'translate-x-5 bg-accent-text' : 'translate-x-0 bg-white'}`} />
             </div>
           </div>
           
@@ -442,7 +482,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${silentStart ? 'bg-accent' : 'bg-border'}`}>
-              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${silentStart ? 'translate-x-5' : 'translate-x-0'}`} />
+              <div className={`w-4 h-4 rounded-full transition-transform ${silentStart ? 'translate-x-5 bg-accent-text' : 'translate-x-0 bg-white'}`} />
             </div>
           </div>
         </div>
@@ -462,7 +502,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${soundCues ? 'bg-accent' : 'bg-border'}`}>
-              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${soundCues ? 'translate-x-5' : 'translate-x-0'}`} />
+              <div className={`w-4 h-4 rounded-full transition-transform ${soundCues ? 'translate-x-5 bg-accent-text' : 'translate-x-0 bg-white'}`} />
             </div>
           </div>
           
@@ -481,7 +521,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               </div>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${duckAudio ? 'bg-accent' : 'bg-border'}`}>
-              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${duckAudio ? 'translate-x-5' : 'translate-x-0'}`} />
+              <div className={`w-4 h-4 rounded-full transition-transform ${duckAudio ? 'translate-x-5 bg-accent-text' : 'translate-x-0 bg-white'}`} />
             </div>
           </div>
         </div>

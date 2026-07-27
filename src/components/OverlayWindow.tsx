@@ -261,12 +261,12 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
   if (isRecording) {
     glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "shadow-[0_0_24px_rgba(77,216,230,0.3)]";
+    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.35)]";
     footerText = t(lang, "overlay.processing");
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_24px_rgba(126,212,145,0.3)]";
+    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.35)]";
   } else if (isError) {
-    glowClass = "shadow-[0_0_24px_rgba(255,85,51,0.15)]";
+    glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
   }
 
   const isActive = isRecording || isProcessing || isSuccess || isError;
@@ -364,11 +364,11 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
   if (isRecording) {
     glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "shadow-[0_0_24px_rgba(77,216,230,0.3)]";
+    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.35)]";
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_24px_rgba(126,212,145,0.3)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
+    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.35)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
   } else if (isError) {
-    glowClass = "shadow-[0_0_24px_rgba(255,85,51,0.15)]";
+    glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
   }
 
   const isActive = isRecording || isProcessing || isSuccess || isError;
@@ -463,11 +463,11 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
   if (isRecording) {
     glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "shadow-[0_0_24px_rgba(77,216,230,0.3)]";
+    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.35)]";
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_24px_rgba(126,212,145,0.3)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
+    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.35)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
   } else if (isError) {
-    glowClass = "shadow-[0_0_24px_rgba(255,85,51,0.15)]";
+    glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
   }
 
   const isActive = isRecording || isProcessing || isSuccess || isError;

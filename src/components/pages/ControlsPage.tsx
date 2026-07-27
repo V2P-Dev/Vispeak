@@ -105,22 +105,16 @@ export function ControlsPage({ lang }: ControlsPageProps) {
     if (!isCancel && !isRecordingHotkey) return;
     
     const keyStr = mapCodeToKeyName(e.code, e.key);
-    
-    // We only need the latest valid combo string. We don't need a React state Set because we can just accumulate strings.
-    // Actually, `e.ctrlKey`, `e.shiftKey`, `e.altKey` are enough to build the base if we want, but since we map `e.code`, we just overwrite the string for simplicity.
-    // Wait, the previous logic accumulated them. Let's just do it directly.
     const parts = [];
     if (e.ctrlKey || e.metaKey) parts.push("Control");
     if (e.altKey) parts.push("Alt");
     if (e.shiftKey) parts.push("Shift");
     
-    // Add the main key if it's not a modifier
     if (!["ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight", "Control", "Shift", "Alt", "Meta"].includes(keyStr)) {
         parts.push(keyStr);
     } else {
-        // If it's a standalone modifier and nothing else is pressed, we can use it as the main key
         if (parts.length === 0 || (parts.length === 1 && parts[0] === keyStr.replace(/Left|Right/, ""))) {
-            parts.length = 0; // Clear
+            parts.length = 0;
             parts.push(keyStr);
         }
     }
@@ -135,7 +129,6 @@ export function ControlsPage({ lang }: ControlsPageProps) {
     if (isCancel && !isRecordingCancelHotkey) return;
     if (!isCancel && !isRecordingHotkey) return;
     
-    // Once a key is released, we consider the combination complete
     if (isCancel) {
       setIsRecordingCancelHotkey(false);
       saveSettings({ cancel_hotkey: inputCancelHotkey });
@@ -198,7 +191,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
   };
 
   return (
-    <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="w-full max-w-2xl animate-in fade-in slide-in-from-bottom-4 duration-300 pb-12">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-primary tracking-tight mb-2">
           {t(lang, "controls.title")}
@@ -264,7 +257,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
             onClick={() => saveSettings({ push_to_talk: !pushToTalk })}
             className={`w-11 h-6 rounded-full transition-colors relative ${pushToTalk ? 'bg-accent' : 'bg-window border border-border'}`}
           >
-            <div className={`w-5 h-5 bg-knob rounded-full absolute top-0.5 shadow-sm transition-all duration-300 ${pushToTalk ? 'left-[22px]' : 'left-[3px] opacity-70'}`}></div>
+            <div className={`w-5 h-5 rounded-full absolute top-0.5 shadow-sm transition-all duration-300 ${pushToTalk ? 'left-[22px] bg-accent-text' : 'left-[3px] bg-knob opacity-70'}`}></div>
           </button>
         </div>
 
@@ -393,7 +386,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
               </span>
             </div>
             <div className={`w-11 h-6 rounded-full p-1 transition-colors ${trailingSpace ? 'bg-accent' : 'bg-border'}`}>
-              <div className={`w-4 h-4 bg-knob shadow-sm rounded-full transition-transform ${trailingSpace ? 'translate-x-5' : 'translate-x-0'}`} />
+              <div className={`w-4 h-4 shadow-sm rounded-full transition-transform ${trailingSpace ? 'translate-x-5 bg-accent-text' : 'translate-x-0 bg-knob'}`} />
             </div>
           </div>
           
