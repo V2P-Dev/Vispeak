@@ -79,8 +79,9 @@ pub fn play_cue(start: bool) {
                 let num_samples = (sample_rate as f32 * duration_sec) as u32;
                 let attack_samples = (sample_rate as f32 * 0.001) as u32; // 1 ms attack
 
-                // Decay constant: from 0.8 at attack end to near 0 at duration end
-                let decay_k = -(duration_sec - 0.001).recip() * (0.0001f32 / 0.5).ln();
+                let max_vol = 0.2f32;
+                // Decay constant: from max_vol at attack end to near 0 at duration end
+                let decay_k = -(duration_sec - 0.001).recip() * (0.0001f32 / max_vol).ln();
 
                 let mut phase = 0.0f32;
                 let samples: Vec<f32> = (0..num_samples)
@@ -89,10 +90,10 @@ pub fn play_cue(start: bool) {
                         let v = phase.sin();
 
                         let env = if i < attack_samples {
-                            0.5 * i as f32 / attack_samples as f32
+                            max_vol * i as f32 / attack_samples as f32
                         } else {
                             let t = (i - attack_samples) as f32 / sample_rate as f32;
-                            0.5 * (-decay_k * t).exp()
+                            max_vol * (-decay_k * t).exp()
                         };
 
                         v * env
