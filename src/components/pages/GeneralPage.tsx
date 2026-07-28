@@ -635,53 +635,70 @@ export function GeneralPage({ lang }: GeneralPageProps) {
           <label className="text-base font-medium text-primary">
             {t(lang, "general.overlay_skin")}
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-3">
+
+            {/* Full */}
             <button
               onClick={() => updateSetting("overlay_skin", "full")}
-              className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${skin === "full" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
+              className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${skin === "full" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
             >
-              <div className="w-full h-16 bg-overlay rounded-lg border border-border/50 flex flex-col p-2 gap-1.5 relative overflow-hidden">
-                 <div className="flex justify-between items-center w-full">
-                    <div className="w-12 h-2 bg-secondary/30 rounded-full"></div>
-                    <div className="w-8 h-2 bg-secondary/20 rounded-full"></div>
-                 </div>
-                 <div className="flex-1 w-full bg-accent/20 rounded-md flex items-center justify-center">
-                    <div className="w-1/2 h-1 bg-accent/50 rounded-full"></div>
-                 </div>
+              {/* Preview: full overlay — header row + recording bar */}
+              <div className="w-full h-[52px] rounded-lg flex flex-col p-1.5 gap-1 overflow-hidden" style={{background:'#141414', border:'1px solid #2a2a2e'}}>
+                {/* header */}
+                <div className="flex justify-between items-center w-full px-0.5">
+                  <div className="h-1 rounded-full w-5" style={{background:'#3a3a3e'}}></div>
+                  <div className="h-1 rounded-full w-3" style={{background:'#2e2e32'}}></div>
+                </div>
+                {/* recording indicator bar */}
+                <div className="flex-1 w-full rounded flex items-center justify-center" style={{background:'#252528'}}>
+                  <div className={`h-1 rounded-full w-1/2 transition-colors ${skin === "full" ? 'bg-accent' : ''}`} style={skin !== "full" ? {background:'#4a4a50'} : {}}></div>
+                </div>
               </div>
-              <span className="text-sm font-medium text-primary">
+              <span className={`text-xs font-medium ${skin === "full" ? 'text-accent' : 'text-secondary'}`}>
                 {t(lang, "general.skin_full")}
               </span>
             </button>
 
+            {/* Compact */}
             <button
               onClick={() => updateSetting("overlay_skin", "compact")}
-              className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${skin === "compact" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
+              className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${skin === "compact" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
             >
-                 <div className="w-full h-16 bg-window rounded-lg flex flex-col justify-center p-2 gap-1.5 relative border border-border/40">
-                    <div className="flex justify-between items-center w-full">
-                       <div className="w-10 h-2 bg-secondary/30 rounded-full"></div>
-                       <div className="w-6 h-2 bg-secondary/20 rounded-full"></div>
-                    </div>
-                 </div>
-              <span className="text-sm font-medium text-primary">
+              {/* Preview: compact — a single horizontal pill with dot + bar */}
+              <div className="w-full h-[52px] rounded-lg flex items-center justify-center" style={{background:'#141414', border:'1px solid #2a2a2e'}}>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{background:'#222224', border:'1px solid #333336'}}>
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${skin === "compact" ? 'bg-accent' : ''}`} style={skin !== "compact" ? {background:'#555558'} : {}}></div>
+                  <div className={`h-1 rounded-full w-8 transition-colors ${skin === "compact" ? 'bg-accent' : ''}`} style={skin !== "compact" ? {background:'#3a3a3e'} : {}}></div>
+                </div>
+              </div>
+              <span className={`text-xs font-medium ${skin === "compact" ? 'text-accent' : 'text-secondary'}`}>
                 {t(lang, "general.skin_compact")}
               </span>
             </button>
 
+            {/* Mini / At Caret */}
             <button
               onClick={() => updateSetting("overlay_skin", "mini")}
-              className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${skin === "mini" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
+              className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${skin === "mini" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
             >
-              <div className="w-full h-16 bg-window rounded-lg flex flex-col items-center justify-center gap-1.5 relative border border-border/40">
-                 <div className="w-[32%] h-5 bg-overlay rounded-full border border-border/50 flex items-center justify-center px-1">
-                    <div className="w-full h-1 bg-accent/60 rounded-full"></div>
-                 </div>
+              {/* Preview: tiny pill above a text cursor line */}
+              <div className="w-full h-[52px] rounded-lg flex flex-col items-center justify-center gap-1" style={{background:'#141414', border:'1px solid #2a2a2e'}}>
+                {/* tiny indicator pill */}
+                <div className="rounded-full px-1.5 flex items-center justify-center" style={{height:'10px', width:'36px', background:'#252528'}}>
+                  <div className={`h-0.5 w-full rounded-full transition-colors ${skin === "mini" ? 'bg-accent' : ''}`} style={skin !== "mini" ? {background:'#4a4a50'} : {}}></div>
+                </div>
+                {/* text cursor line */}
+                <div className="flex items-center gap-0.5">
+                  <div className="h-0.5 w-5 rounded-full" style={{background:'#333336'}}></div>
+                  <div className="h-3 w-px" style={{background:'#555558'}}></div>
+                  <div className="h-0.5 w-3 rounded-full" style={{background:'#2a2a2e'}}></div>
+                </div>
               </div>
-              <span className="text-sm font-medium text-primary">
+              <span className={`text-xs font-medium ${skin === "mini" ? 'text-accent' : 'text-secondary'}`}>
                 {t(lang, "general.skin_mini")}
               </span>
             </button>
+
           </div>
           {skin === "mini" && (
             <div className="text-xs text-secondary bg-window p-3 rounded-xl border border-border/50 leading-relaxed">
@@ -689,6 +706,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
             </div>
           )}
         </div>
+
       </div>
 
       {/* Restart Modal */}

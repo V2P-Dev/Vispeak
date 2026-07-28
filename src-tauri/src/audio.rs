@@ -74,43 +74,30 @@ pub fn play_cue(start: bool) {
         if let Ok((_stream, stream_handle)) = rodio::OutputStream::try_default() {
             if let Ok(sink) = rodio::Sink::try_new(&stream_handle) {
                 let sample_rate = 44100u32;
+                let duration_sec = 1.0f32;
+                let freq: f32 = if start { 500.0 } else { 400.0 };
+                let num_samples = (sample_rate as f32 * duration_sec) as u32;
+                let attack_samples = (sample_rate as f32 * 0.001) as u32; // 1 ms attack
 
-                // Премиальный звук: каждая нота — это 3 слегка расстроенных слоя (chorus),
-                // создающих эффект глубины и "дорогого" звучания
-                let notes: [(f32, u32); 2] = if start {
-                    [(523.25, 100), (659.25, 130)] // C5 -> E5
-                } else {
-                    [(659.25, 100), (523.25, 130)] // E5 -> C5
-                };
+                // Decay constant: from 0.8 at attack end to near 0 at duration end
+                let decay_k = -(duration_sec - 0.001).recip() * (0.0001f32 / 0.5).ln();
 
-                let mut samples = Vec::new();
+                let mut phase = 0.0f32;
+                let samples: Vec<f32> = (0..num_samples)
+                    .map(|i| {
+                        phase += freq * 2.0 * std::f32::consts::PI / sample_rate as f32;
+                        let v = phase.sin();
 
-                for (base_freq, dur_ms) in notes {
-                    let num_samples = (sample_rate * dur_ms) / 1000;
-                    let freqs = [base_freq, base_freq + 1.5, base_freq - 1.5];
-                    let mut phases = [0.0f32; 3];
+                        let env = if i < attack_samples {
+                            0.5 * i as f32 / attack_samples as f32
+                        } else {
+                            let t = (i - attack_samples) as f32 / sample_rate as f32;
+                            0.5 * (-decay_k * t).exp()
+                        };
 
-                    for i in 0..num_samples {
-                        let t = i as f32 / num_samples as f32;
-
-                        let mut sample = 0.0f32;
-                        for (k, &freq) in freqs.iter().enumerate() {
-                            phases[k] += freq * 2.0 * std::f32::consts::PI / sample_rate as f32;
-                            let weight = if k == 0 { 0.5 } else { 0.25 };
-                            sample += weight * phases[k].sin();
-                        }
-
-                        let attack_time = 0.020;
-                        let attack_samples = (sample_rate as f32 * attack_time) as u32;
-                        let mut env = (-2.2 * t).exp() * (1.0 - t * 0.7);
-                        if i < attack_samples {
-                            env *= i as f32 / attack_samples as f32;
-                        }
-
-                        // Уровень громкости 0.1, чтобы звук был мягким и ненавязчивым
-                        samples.push(sample * env * 0.1);
-                    }
-                }
+                        v * env
+                    })
+                    .collect();
 
                 let source = rodio::buffer::SamplesBuffer::new(1, sample_rate, samples);
                 sink.append(source);
@@ -119,6 +106,7 @@ pub fn play_cue(start: bool) {
         }
     });
 }
+
 
 enum WorkerResult {
     Completed,
