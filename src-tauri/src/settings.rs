@@ -192,6 +192,14 @@ pub fn load_settings() -> Settings {
                     }
                 }
 
+                // Fallback if the active model was deleted from registry
+                if let Some(active) = &settings.active_model {
+                    if !crate::models::MODELS.iter().any(|m| m.id == active) {
+                        settings.active_model = Some("gigaam".to_string());
+                        mutated = true;
+                    }
+                }
+
                 if mutated {
                     let _ = save_settings(&settings);
                 }

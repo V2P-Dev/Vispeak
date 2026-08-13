@@ -40,6 +40,8 @@ Vispeak is a Windows desktop application for local, offline voice transcription 
 - On a build error: read the full error message first, check dependency versions and environment variables (LIBCLANG_PATH for whisper-rs); do not downgrade dependencies blindly.
 - Add new crates/npm packages only when genuinely needed; justify each new one in a single line in your reply.
 - At the end of every task, provide a short manual verification checklist for the user (what to press, what should happen).
+- **Clean up garbage files**: Always delete any temporary test scripts, dummy headers, or other artifacts created for your own debugging/diagnostics before concluding the task.
+
 
 ## Git & Release — command-gated (CRITICAL)
 

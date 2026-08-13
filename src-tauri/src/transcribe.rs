@@ -273,6 +273,9 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                             params.set_print_progress(false);
                             params.set_print_realtime(false);
                             params.set_print_timestamps(false);
+                            
+                            let n_threads = num_cpus::get_physical() as std::os::raw::c_int;
+                            params.set_n_threads(n_threads);
 
                             if let Some(prompt) = &model_settings.initial_prompt {
                                 if !prompt.trim().is_empty() {

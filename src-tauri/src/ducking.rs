@@ -12,6 +12,23 @@ lazy_static::lazy_static! {
     static ref IS_DUCKED: Mutex<bool> = Mutex::new(false);
 }
 
+pub struct DuckingGuard;
+
+impl DuckingGuard {
+    pub fn new() -> Self {
+        eprintln!("[info][ducking] DuckingGuard created, triggering duck_audio()");
+        duck_audio();
+        Self
+    }
+}
+
+impl Drop for DuckingGuard {
+    fn drop(&mut self) {
+        eprintln!("[info][ducking] DuckingGuard dropped, triggering restore_audio()");
+        restore_audio();
+    }
+}
+
 fn get_process_name(pid: u32) -> String {
     use windows::Win32::Foundation::MAX_PATH;
     use windows::Win32::System::ProcessStatus::GetModuleFileNameExW;

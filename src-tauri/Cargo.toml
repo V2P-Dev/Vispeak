@@ -60,4 +60,4 @@ lazy_static = "1.5.0"
 ort = { version = "=2.0.0-rc.12", default-features = false }
 rusqlite = { version = "0.32", features = ["bundled"] }
 chrono = "0.4.45"
-
+num_cpus = "1.16.0"

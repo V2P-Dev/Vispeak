@@ -178,20 +178,6 @@ pub const MODELS: &[ModelDef] = &[
             ("nemotron-3.5-asr-streaming-0.6b-Q8_0.gguf", "https://huggingface.co/handy-computer/nemotron-3.5-asr-streaming-0.6b-gguf/resolve/main/nemotron-3.5-asr-streaming-0.6b-Q8_0.gguf"),
         ],
     },
-    ModelDef {
-        id: "qwen",
-        name: "Qwen3-ASR 0.6B",
-        size_mb: 811,
-        accuracy_rating: 4,
-        speed_rating: 4,
-        languages: 40,
-        quantization: "Q8_0",
-        engine: "ggml",
-        translation: TranslationSupport::None,
-        files: &[
-            ("Qwen3-ASR-0.6B-Q8_0.gguf", "https://huggingface.co/handy-computer/Qwen3-ASR-0.6B-gguf/resolve/main/Qwen3-ASR-0.6B-Q8_0.gguf"),
-        ],
-    },
 ];
 
 pub fn get_models_dir() -> PathBuf {

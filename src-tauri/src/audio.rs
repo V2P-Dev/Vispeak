@@ -13,6 +13,7 @@ pub struct AudioState {
     pub caret_trace: String,
     pub app_info: Option<crate::paste::AppInfo>,
     stop_tx: Option<Sender<()>>,
+    pub ducking_guard: Option<crate::ducking::DuckingGuard>,
 }
 
 impl Default for AudioState {
@@ -27,6 +28,7 @@ impl Default for AudioState {
             caret_trace: String::new(),
             app_info: None,
             stop_tx: None,
+            ducking_guard: None,
         }
     }
 }
@@ -49,6 +51,10 @@ pub fn start_recording(app: AppHandle) -> Result<(), String> {
     let (stop_tx, stop_rx) = unbounded();
     state.is_recording = true;
     state.stop_tx = Some(stop_tx);
+    let settings = crate::settings::load_settings();
+    if settings.duck_audio {
+        state.ducking_guard = Some(crate::ducking::DuckingGuard::new());
+    }
     drop(state);
 
     if had_old_worker {
@@ -114,14 +120,7 @@ enum WorkerResult {
     StalledNoSamples,
 }
 
-struct DuckingGuard(bool);
-impl Drop for DuckingGuard {
-    fn drop(&mut self) {
-        if self.0 {
-            crate::ducking::restore_audio();
-        }
-    }
-}
+// old DuckingGuard removed
 
 fn run_audio_session(
     device: &cpal::Device,
@@ -220,6 +219,11 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
             None => {
                 eprintln!("[error][audio] No input device available");
                 let _ = app_clone.emit("show-error", "err_mic_not_found".to_string());
+                let state_arc = app_clone.state::<Arc<Mutex<AudioState>>>();
+                let mut state = state_arc.inner().lock().unwrap();
+                state.is_recording = false;
+                state.ducking_guard = None;
+                if let Some(window) = app_clone.get_webview_window("overlay") { let _ = window.hide(); }
                 return;
             }
         };
@@ -227,6 +231,11 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
             Ok(c) => c,
             Err(e) => {
                 eprintln!("[error][audio] Error getting config: {}", e);
+                let state_arc = app_clone.state::<Arc<Mutex<AudioState>>>();
+                let mut state = state_arc.inner().lock().unwrap();
+                state.is_recording = false;
+                state.ducking_guard = None;
+                if let Some(window) = app_clone.get_webview_window("overlay") { let _ = window.hide(); }
                 return;
             }
         };
@@ -269,6 +278,7 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
                         let mut state = state_arc.inner().lock().unwrap();
                         state.is_recording = false;
                         state.is_processing = false;
+                        state.ducking_guard = None;
                         if let Some(window) = app_clone.get_webview_window("overlay") {
                             crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: watchdog timeout worker aborted)");
                             let _ = window.hide();
@@ -287,6 +297,7 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
                 state.is_recording = false;
                 state.is_processing = false;
                 state.is_previewing = false;
+                state.ducking_guard = None;
                 let _ = state.stop_tx.take();
                 if let Some(window) = app_clone.get_webview_window("overlay") {
                     crate::log_debug(
@@ -359,10 +370,9 @@ pub fn stop_recording(app: AppHandle) -> Result<(), String> {
         let _ = tx.send(());
     }
 
+    state.ducking_guard = None;
+
     let settings = crate::settings::load_settings();
-    if settings.duck_audio {
-        crate::ducking::restore_audio();
-    }
     if settings.sound_cues {
         play_cue(false);
     }
@@ -382,11 +392,7 @@ pub fn cancel_action(app: AppHandle) {
         let _ = tx.send(());
     }
 
-    let settings = crate::settings::load_settings();
-    if settings.duck_audio {
-        crate::ducking::restore_audio();
-    }
-    // We don't play a cue on cancel, or maybe we do? Let's not play it to differentiate.
+    state.ducking_guard = None;
 
     let _ = app.emit("recording-cancelled", ());
     if let Some(window) = app.get_webview_window("overlay") {
@@ -406,10 +412,7 @@ pub fn cancel_action_silently(app: AppHandle) {
         let _ = tx.send(());
     }
 
-    let settings = crate::settings::load_settings();
-    if settings.duck_audio {
-        crate::ducking::restore_audio();
-    }
+    state.ducking_guard = None;
 
     // We emit a silent cancel so the frontend can reset its UI state without showing an error
     let _ = app.emit("recording-cancelled-silently", ());
@@ -417,6 +420,21 @@ pub fn cancel_action_silently(app: AppHandle) {
         crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: cancel_action_silently)");
         let _ = window.hide();
     }
+}
+
+pub fn force_stop_audio(app: AppHandle) {
+    let state_arc = app.state::<Arc<Mutex<AudioState>>>();
+    let mut state = state_arc.inner().lock().unwrap();
+
+    state.is_recording = false;
+    state.is_processing = false;
+    state.is_previewing = false;
+
+    if let Some(tx) = state.stop_tx.take() {
+        let _ = tx.send(());
+    }
+
+    state.ducking_guard = None;
 }
 
 // Simple nearest-neighbor manual resampler
@@ -484,9 +502,6 @@ fn worker_process(
         channels = 1;
     }
     let settings = crate::settings::load_settings();
-    let should_duck = !is_preview && settings.duck_audio;
-    let _ducking_guard = DuckingGuard(should_duck);
-    let mut ducked_already = false;
     let mut total_samples_received: usize = 0;
     let start_time = std::time::Instant::now();
     let mut last_log_time = std::time::Instant::now();
@@ -526,15 +541,6 @@ fn worker_process(
                     }
                 }
                 total_samples_received += 1;
-
-                if !ducked_already
-                    && should_duck
-                    && total_samples_received >= channels as usize * 20
-                {
-                    ducked_already = true;
-                    eprintln!("[info][audio] Audio stream confirmed flowing (received {} raw samples). Triggering duck_audio()...", total_samples_received);
-                    crate::ducking::duck_audio();
-                }
 
                 if last_log_time.elapsed() >= std::time::Duration::from_secs(1) {
                     if !is_preview {
@@ -604,6 +610,8 @@ fn worker_process(
 
     eprintln!("[info][audio] Worker loop exited: received {} raw samples, accumulated {} resampled mono samples (resampler in: {}, out: {}).", total_samples_received, accumulated_samples.len(), resampler.input_count, resampler.output_count);
 
+    // Guard will drop automatically when state.ducking_guard is set to None below.
+
     if !is_preview {
         let state_arc = app.state::<Arc<Mutex<AudioState>>>();
         let mut state = state_arc.inner().lock().unwrap();
@@ -611,6 +619,7 @@ fn worker_process(
             state.is_recording = false;
             let _ = state.stop_tx.take();
         }
+        state.ducking_guard = None;
     } else {
         let state_arc = app.state::<Arc<Mutex<AudioState>>>();
         let mut state = state_arc.inner().lock().unwrap();
