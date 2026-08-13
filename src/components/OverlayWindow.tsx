@@ -87,6 +87,7 @@ function Visualizer({ level, colorClass = "bg-accent", pulse = false, count = 52
 function useOverlayState() {
   const [level, setLevel] = useState(0);
   const [statusText, setStatusText] = useState("");
+  const [liveText, setLiveText] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
 
@@ -120,6 +121,10 @@ function useOverlayState() {
       setLevel(event.payload);
     });
 
+    const unlistenLive = listen<string>("live-transcription", (event) => {
+      setLiveText(event.payload);
+    });
+
     const unlistenAppInfo = listen<AppInfo>("target-app", (event) => {
       setAppInfo(event.payload);
     });
@@ -135,6 +140,7 @@ function useOverlayState() {
     const unlistenStarted = listen("recording-started", () => {
       clearHideTimeout();
       setStatusText(t(lang, "overlay.recording")); // In compact, text is "Listening", we can override in component
+      setLiveText(null);
       setIsRecording(true);
       setIsProcessing(false);
       setIsSuccess(false);
@@ -144,6 +150,7 @@ function useOverlayState() {
 
     const unlistenProcessing = listen("processing-started", () => {
       setStatusText(t(lang, "overlay.processing"));
+      setLiveText(null);
       setIsRecording(false);
       setIsProcessing(true);
       setIsSuccess(false);
@@ -151,6 +158,7 @@ function useOverlayState() {
     });
 
     const unlistenDone = listen<string>("transcription-done", (event) => {
+      setLiveText(null);
       const payload = event.payload;
       if (payload.startsWith("Error: ")) {
         const code = payload.replace("Error: ", "");
@@ -189,15 +197,17 @@ function useOverlayState() {
       }
       
       clearHideTimeout();
+      const hideDuration = payload.length > 80 ? 3000 : 1500;
       hideTimeoutRef.current = window.setTimeout(() => {
         setIsSuccess(false);
         setIsCopied(false);
         setIsError(false);
-      }, 1500);
+      }, hideDuration);
     });
 
     const unlistenError = listen<string>("show-error", (event) => {
       // event.payload is now an error code, e.g. "err_mic_not_found"
+      setLiveText(null);
       setErrorText(t(getLanguage(lang), `errors.${event.payload}`));
       setIsRecording(false);
       setIsProcessing(false);
@@ -213,6 +223,7 @@ function useOverlayState() {
 
     const unlistenCancelled = listen("recording-cancelled", () => {
       clearHideTimeout();
+      setLiveText(null);
       setIsRecording(false);
       setIsProcessing(false);
       setIsSuccess(false);
@@ -221,6 +232,7 @@ function useOverlayState() {
 
     const unlistenCancelledSilently = listen("recording-cancelled-silently", () => {
       clearHideTimeout();
+      setLiveText(null);
       setIsRecording(false);
       setIsProcessing(false);
       setIsSuccess(false);
@@ -237,6 +249,7 @@ function useOverlayState() {
 
     return () => {
       unlistenLevel.then(f => f());
+      unlistenLive.then(f => f());
       unlistenAppInfo.then(f => f());
       unlistenModelLoading.then(f => f());
       unlistenModelLoaded.then(f => f());
@@ -250,21 +263,24 @@ function useOverlayState() {
     };
   }, [lang]);
 
-  return { level, statusText, errorText, appInfo, isRecording, isProcessing, isSuccess, isCopied, isError, lang, skin };
+  return { level, statusText, liveText, errorText, appInfo, isRecording, isProcessing, isSuccess, isCopied, isError, lang, skin };
 }
 
 function OverlayFull(props: ReturnType<typeof useOverlayState>) {
-  const { level, statusText, errorText, appInfo, isRecording, isProcessing, isSuccess, isError, lang } = props;
+  const { level, statusText, liveText, errorText, appInfo, isRecording, isProcessing, isSuccess, isError, isCopied, lang } = props;
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState(103);
+  const [isExpanding, setIsExpanding] = useState(false);
 
   let glowClass = "shadow-lg";
   let footerText = t(lang, "overlay.cancel");
   if (isRecording) {
     glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.35)]";
+    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.34)]";
     footerText = t(lang, "overlay.processing");
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.35)]";
+    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.33)]";
   } else if (isError) {
     glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
   }
@@ -281,12 +297,51 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
     }
   }, [isActive]);
 
+  const hasLiveText = isRecording && !!liveText;
+  const hasFinalText = isSuccess && !isCopied && !!statusText;
+
+  useEffect(() => {
+    if ((hasLiveText || hasFinalText) && contentRef.current) {
+      const textScrollHeight = contentRef.current.scrollHeight;
+      const headerFooterHeight = 55;
+      const neededCardH = Math.max(103, headerFooterHeight + textScrollHeight + 12);
+
+      const maxScreenH = window.screen.availHeight ? window.screen.availHeight * 0.75 : 600;
+      const maxCardH = Math.floor(maxScreenH - 48);
+
+      const targetCardH = Math.min(maxCardH, neededCardH);
+      const targetWindowH = targetCardH + 48;
+
+      if (targetCardH > 103) {
+        setIsExpanding(true);
+        const timer = setTimeout(() => {
+          setIsExpanding(false);
+        }, 320);
+
+        setCardHeight(targetCardH);
+        invoke("resize_overlay_window", { logicalHeight: targetWindowH }).catch(() => {});
+
+        return () => clearTimeout(timer);
+      } else {
+        setIsExpanding(false);
+        setCardHeight(103);
+        invoke("resize_overlay_window", { logicalHeight: 151 }).catch(() => {});
+      }
+    } else {
+      setIsExpanding(false);
+      setCardHeight(103);
+      invoke("resize_overlay_window", { logicalHeight: 151 }).catch(() => {});
+    }
+  }, [hasLiveText, hasFinalText, statusText, liveText, isSuccess, isCopied, isRecording, isProcessing]);
+
   return (
-    <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
-      <div className={`w-[311px] h-[103px] bg-overlay/95 backdrop-blur-md rounded-[20px] flex flex-col transition-all duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden`}>
-        
+    <div className="flex w-full h-full items-end justify-center pb-6 px-6 pt-6 bg-transparent">
+      <div 
+        style={{ height: `${cardHeight}px` }}
+        className={`w-[311px] bg-overlay/95 backdrop-blur-md rounded-[20px] flex flex-col transition-[height,box-shadow,opacity,transform] duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden`}
+      >
         {/* Header */}
-        <div className="flex flex-row items-center justify-between w-full px-3 py-1.5 border-b border-border/50 bg-surface/50">
+        <div className="flex flex-row items-center justify-between w-full px-3 py-1.5 border-b border-border/50 bg-surface/50 shrink-0 h-[32px]">
           <div className="flex flex-row items-center gap-2 overflow-hidden flex-1">
             {appInfo?.icon_base64 ? (
               <img src={`data:image/png;base64,${appInfo.icon_base64}`} className="w-3.5 h-3.5 object-contain" />
@@ -311,23 +366,41 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
         </div>
 
         {/* Center */}
-        <div className="flex-1 w-full flex items-center justify-center px-4 overflow-hidden relative">
-          {isRecording && <Visualizer level={level} colorClass="bg-accent" />}
-          {isProcessing && <Visualizer level={0.0} colorClass="bg-processing" pulse />}
-          {isSuccess && (
-            <span className="text-primary text-xs tracking-wide text-center line-clamp-2 leading-tight">
-              {statusText}
-            </span>
-          )}
-          {isError && (
-            <span className="text-error text-xs font-medium text-center">
-              {errorText || t(lang, "overlay.error_no_mic")}
-            </span>
+        <div className="flex-1 w-full flex items-center justify-center px-4 py-1.5 overflow-hidden relative min-h-0">
+          {hasLiveText ? (
+            <div 
+              ref={contentRef} 
+              className={`w-full max-h-full ${isExpanding ? 'overflow-hidden' : 'overflow-y-auto'} px-1 py-1 text-center [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-secondary/40 [&::-webkit-scrollbar-thumb]:rounded-full`}
+            >
+              <span className="text-primary text-xs tracking-wide text-center leading-relaxed block break-words">
+                {liveText}
+              </span>
+            </div>
+          ) : (
+            <>
+              {isRecording && <Visualizer level={level} colorClass="bg-accent" />}
+              {isProcessing && <Visualizer level={0.0} colorClass="bg-processing" pulse />}
+              {isSuccess && (
+                <div 
+                  ref={contentRef} 
+                  className={`w-full max-h-full ${isExpanding ? 'overflow-hidden' : 'overflow-y-auto'} px-1 py-1 text-center [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-secondary/40 [&::-webkit-scrollbar-thumb]:rounded-full`}
+                >
+                  <span className="text-primary text-xs tracking-wide text-center leading-relaxed block break-words">
+                    {statusText}
+                  </span>
+                </div>
+              )}
+              {isError && (
+                <span className="text-error text-xs font-medium text-center">
+                  {errorText || t(lang, "overlay.error_no_mic")}
+                </span>
+              )}
+            </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="w-full text-center py-1 border-t border-border/50 bg-surface/50">
+        <div className="w-full text-center py-1 border-t border-border/50 bg-surface/50 shrink-0 h-[23px] flex items-center justify-center">
           <span className="text-secondary text-[10px]">
             {footerText}
           </span>
@@ -364,9 +437,9 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
   if (isRecording) {
     glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.35)]";
+    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.34)]";
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.35)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
+    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.33)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
   } else if (isError) {
     glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
   }
@@ -463,9 +536,9 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
   if (isRecording) {
     glowClass = "animate-glow-pulse";
   } else if (isProcessing) {
-    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.35)]";
+    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.34)]";
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.35)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
+    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.33)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
   } else if (isError) {
     glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
   }

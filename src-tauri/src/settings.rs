@@ -59,6 +59,8 @@ pub struct Settings {
     pub auto_unload_idle_minutes: u32,
     #[serde(default = "default_accent_color")]
     pub accent_color: String,
+    #[serde(default)]
+    pub streaming_input: bool,
 }
 
 fn default_auto_unload_idle_minutes() -> u32 {
@@ -130,6 +132,7 @@ impl Default for Settings {
             accent_color: default_accent_color(),
             history_limit: default_history_limit(),
             auto_unload_idle_minutes: default_auto_unload_idle_minutes(),
+            streaming_input: false,
         }
     }
 }

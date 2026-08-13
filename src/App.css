@@ -125,12 +125,12 @@
   [data-accent="white"] {
     --accent: #ffffff;
     --accent-text: #0d0d0d;
-    --shadow-accent-xs: 0 0 6px rgba(255, 255, 255, 0.4);
-    --shadow-accent-sm: 0 0 8px rgba(255, 255, 255, 0.6);
-    --shadow-accent-md: 0 0 12px rgba(255, 255, 255, 0.3);
-    --shadow-accent-lg: 0 0 30px rgba(255, 255, 255, 0.15);
-    --glow-min: rgba(255, 255, 255, 0.2);
-    --glow-max: rgba(255, 255, 255, 0.45);
+    --shadow-accent-xs: 0 0 6px rgba(255, 255, 255, 0.20);
+    --shadow-accent-sm: 0 0 8px rgba(255, 255, 255, 0.30);
+    --shadow-accent-md: 0 0 12px rgba(255, 255, 255, 0.16);
+    --shadow-accent-lg: 0 0 30px rgba(255, 255, 255, 0.08);
+    --glow-min: rgba(255, 255, 255, 0.10);
+    --glow-max: rgba(255, 255, 255, 0.24);
   }
 
   :root[data-theme="light"][data-accent="white"],
@@ -139,12 +139,12 @@
   [data-theme="light"][data-accent="white"] {
     --accent: #ffffff;
     --accent-text: #0d0d0d;
-    --shadow-accent-xs: 0 2px 6px rgba(255, 255, 255, 0.3);
-    --shadow-accent-sm: 0 2px 8px rgba(255, 255, 255, 0.4);
-    --shadow-accent-md: 0 4px 12px rgba(255, 255, 255, 0.3);
-    --shadow-accent-lg: 0 8px 24px rgba(255, 255, 255, 0.2);
-    --glow-min: rgba(255, 255, 255, 0.2);
-    --glow-max: rgba(255, 255, 255, 0.45);
+    --shadow-accent-xs: 0 2px 6px rgba(0, 0, 0, 0.12);
+    --shadow-accent-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --shadow-accent-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+    --shadow-accent-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
+    --glow-min: rgba(255, 255, 255, 0.10);
+    --glow-max: rgba(255, 255, 255, 0.24);
   }
 
   :root[data-accent="black"],
@@ -153,12 +153,12 @@
   [data-accent="black"] {
     --accent: #0d0d0d;
     --accent-text: #ffffff;
-    --shadow-accent-xs: 0 0 6px rgba(13, 13, 13, 0.4);
-    --shadow-accent-sm: 0 0 8px rgba(13, 13, 13, 0.6);
-    --shadow-accent-md: 0 0 12px rgba(13, 13, 13, 0.3);
-    --shadow-accent-lg: 0 0 30px rgba(13, 13, 13, 0.15);
-    --glow-min: rgba(13, 13, 13, 0.2);
-    --glow-max: rgba(13, 13, 13, 0.45);
+    --shadow-accent-xs: 0 0 6px rgba(255, 255, 255, 0.10);
+    --shadow-accent-sm: 0 0 8px rgba(255, 255, 255, 0.15);
+    --shadow-accent-md: 0 0 12px rgba(255, 255, 255, 0.10);
+    --shadow-accent-lg: 0 0 30px rgba(255, 255, 255, 0.05);
+    --glow-min: rgba(255, 255, 255, 0.08);
+    --glow-max: rgba(255, 255, 255, 0.18);
   }
 
   :root[data-theme="light"][data-accent="black"],
@@ -167,12 +167,12 @@
   [data-theme="light"][data-accent="black"] {
     --accent: #0d0d0d;
     --accent-text: #ffffff;
-    --shadow-accent-xs: 0 2px 6px rgba(13, 13, 13, 0.2);
-    --shadow-accent-sm: 0 2px 8px rgba(13, 13, 13, 0.3);
-    --shadow-accent-md: 0 4px 12px rgba(13, 13, 13, 0.2);
-    --shadow-accent-lg: 0 8px 24px rgba(13, 13, 13, 0.15);
-    --glow-min: rgba(13, 13, 13, 0.2);
-    --glow-max: rgba(13, 13, 13, 0.45);
+    --shadow-accent-xs: 0 2px 6px rgba(13, 13, 13, 0.15);
+    --shadow-accent-sm: 0 2px 8px rgba(13, 13, 13, 0.20);
+    --shadow-accent-md: 0 4px 12px rgba(13, 13, 13, 0.15);
+    --shadow-accent-lg: 0 8px 24px rgba(13, 13, 13, 0.10);
+    --glow-min: rgba(13, 13, 13, 0.10);
+    --glow-max: rgba(13, 13, 13, 0.25);
   }
 
   body {

@@ -26,13 +26,18 @@ enum ActiveModel {
     Parakeet(ParakeetModel),
     Canary(CanaryModel),
     GigaAM(GigaAMModel),
-    Ggml(transcribe_cpp::Model),
+    Ggml {
+        _model: transcribe_cpp::Model,
+        session: transcribe_cpp::Session,
+    },
 }
 
 pub enum TranscribeMsg {
     Request(TranscribeRequest),
     Preload { app: AppHandle, model_id: String },
     UnloadModel,
+    StreamChunk { app: AppHandle, samples: Vec<f32> },
+    StreamCancel,
 }
 
 pub struct TranscriberState {
@@ -85,6 +90,21 @@ pub fn request_transcription(
         is_retranscription,
     };
     let _ = state.tx.send(TranscribeMsg::Request(req));
+}
+
+pub fn send_stream_chunk(app: &AppHandle, samples: Vec<f32>) {
+    if let Some(state) = app.try_state::<TranscriberState>() {
+        let _ = state.tx.send(TranscribeMsg::StreamChunk {
+            app: app.clone(),
+            samples,
+        });
+    }
+}
+
+pub fn cancel_stream(app: &AppHandle) {
+    if let Some(state) = app.try_state::<TranscriberState>() {
+        let _ = state.tx.send(TranscribeMsg::StreamCancel);
+    }
 }
 
 fn load_model_instance(app: &AppHandle, model_id: &str) -> Option<ActiveModel> {
@@ -141,7 +161,13 @@ fn load_model_instance(app: &AppHandle, model_id: &str) -> Option<ActiveModel> {
                 .to_string_lossy()
                 .to_string();
             match transcribe_cpp::Model::load(&path_str) {
-                Ok(m) => Some(ActiveModel::Ggml(m)),
+                Ok(m) => match m.session() {
+                    Ok(s) => Some(ActiveModel::Ggml { _model: m, session: s }),
+                    Err(_e) => {
+                        let _ = app.emit("transcription-done", "Error: err_load_failed".to_string());
+                        None
+                    }
+                },
                 Err(_e) => {
                     let _ = app.emit("transcription-done", "Error: err_load_failed".to_string());
                     None
@@ -161,6 +187,11 @@ fn load_model_instance(app: &AppHandle, model_id: &str) -> Option<ActiveModel> {
 fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
     let mut active_model: Option<ActiveModel> = None;
     let mut active_model_id: Option<String> = None;
+    let mut active_stream: Option<transcribe_cpp::Stream<'static>> = None;
+    let mut last_stream_emit_time: Option<std::time::Instant> = None;
+    let mut last_emitted_text = String::new();
+    let mut last_typed_committed_len: usize = 0;
+    let mut live_typing_aborted = false;
     let mut last_activity = std::time::Instant::now();
     let mut last_app: Option<AppHandle> = None;
 
@@ -186,6 +217,13 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                         if is_busy {
                             last_activity = std::time::Instant::now();
                         } else {
+                            if let Some(mut stream) = active_stream.take() {
+                                stream.reset();
+                            }
+                            last_emitted_text.clear();
+                            last_stream_emit_time = None;
+                            last_typed_committed_len = 0;
+                            live_typing_aborted = false;
                             active_model = None;
                             active_model_id = None;
                             *LOADED_MODEL_ID.lock().unwrap() = None;
@@ -206,6 +244,13 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
 
         match msg {
             TranscribeMsg::UnloadModel => {
+                if let Some(mut stream) = active_stream.take() {
+                    stream.reset();
+                }
+                last_emitted_text.clear();
+                last_stream_emit_time = None;
+                last_typed_committed_len = 0;
+                live_typing_aborted = false;
                 let had_model = active_model.is_some();
                 active_model = None;
                 active_model_id = None;
@@ -217,9 +262,92 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                 }
                 println!("[info][transcribe] Model explicitly unloaded");
             }
+            TranscribeMsg::StreamCancel => {
+                if let Some(mut stream) = active_stream.take() {
+                    stream.reset();
+                }
+                last_emitted_text.clear();
+                last_stream_emit_time = None;
+                last_typed_committed_len = 0;
+                live_typing_aborted = false;
+            }
+            TranscribeMsg::StreamChunk { app, samples } => {
+                last_app = Some(app.clone());
+                last_activity = std::time::Instant::now();
+
+                if active_stream.is_none() {
+                    last_emitted_text.clear();
+                    last_stream_emit_time = None;
+                    last_typed_committed_len = 0;
+                    live_typing_aborted = false;
+                    if let Some(ActiveModel::Ggml { session, .. }) = active_model.as_mut() {
+                        let run_opts = transcribe_cpp::RunOptions::default();
+                        let stream_opts = transcribe_cpp::StreamOptions {
+                            commit_policy: transcribe_cpp::CommitPolicy::Auto,
+                            stable_prefix_agreement_n: 3,
+                            family: None,
+                        };
+                        if let Ok(st) = session.stream(&run_opts, &stream_opts) {
+                            let st_static: transcribe_cpp::Stream<'static> =
+                                unsafe { std::mem::transmute(st) };
+                            active_stream = Some(st_static);
+                        }
+                    }
+                }
+
+                if let Some(stream) = active_stream.as_mut() {
+                    if let Ok(update) = stream.feed(&samples) {
+                        let stream_text = stream.text();
+                        let current_text = stream_text.display();
+                        let current_committed = stream_text.committed;
+
+                        let settings = crate::settings::load_settings();
+                        let is_mini = settings.overlay_skin == "mini";
+                        let is_streaming = settings.streaming_input;
+
+                        // Live typing into target window for Mini skin
+                        if is_mini && is_streaming && !live_typing_aborted {
+                            if current_committed.len() > last_typed_committed_len {
+                                let delta = &current_committed[last_typed_committed_len..];
+                                let target_hwnd = {
+                                    let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<crate::audio::AudioState>>>();
+                                    let state = state_arc.inner().lock().unwrap();
+                                    state.target_hwnd
+                                };
+
+                                if crate::paste::type_text_delta(delta, target_hwnd) {
+                                    last_typed_committed_len = current_committed.len();
+                                } else {
+                                    live_typing_aborted = true;
+                                    println!("[info][transcribe] Live typing aborted due to target window focus loss");
+                                    let _ = app.emit("live-typing-focus-lost", ());
+                                }
+                            }
+                        }
+
+                        let should_emit = update.committed_changed
+                            || last_stream_emit_time
+                                .map_or(true, |t| t.elapsed() >= std::time::Duration::from_millis(300))
+                            || (last_emitted_text.is_empty() && !current_text.is_empty());
+
+                        if should_emit && current_text != last_emitted_text {
+                            let _ = app.emit("live-transcription", &current_text);
+                            last_emitted_text = current_text;
+                            last_stream_emit_time = Some(std::time::Instant::now());
+                        }
+                    }
+                }
+            }
             TranscribeMsg::Preload { app, model_id } => {
                 last_app = Some(app.clone());
                 if active_model_id.as_deref() != Some(&model_id) || active_model.is_none() {
+                    if let Some(mut stream) = active_stream.take() {
+                        stream.reset();
+                    }
+                    last_emitted_text.clear();
+                    last_stream_emit_time = None;
+                    last_typed_committed_len = 0;
+                    live_typing_aborted = false;
                     let _ = app.emit("model-loading", ());
                     let loaded = load_model_instance(&app, &model_id);
                     if let Some(m) = loaded {
@@ -235,11 +363,20 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                 let app = req.app.clone();
                 last_app = Some(app.clone());
 
-                if req.is_retranscription.is_none() {
+                let was_streaming = active_stream.is_some();
+
+                if req.is_retranscription.is_none() && !was_streaming {
                     let _ = app.emit("processing-started", ());
                 }
 
                 if active_model_id.as_deref() != Some(&req.model_id) || active_model.is_none() {
+                    if let Some(mut stream) = active_stream.take() {
+                        stream.reset();
+                    }
+                    last_emitted_text.clear();
+                    last_stream_emit_time = None;
+                    last_typed_committed_len = 0;
+                    live_typing_aborted = false;
                     let _ = app.emit("model-loading", ());
                     let loaded = load_model_instance(&app, &req.model_id);
                     if let Some(m) = loaded {
@@ -368,33 +505,53 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                                 }
                             }
                         }
-                        ActiveModel::Ggml(model) => {
-                            let mut session = match model.session() {
-                                Ok(s) => s,
-                                Err(_e) => {
-                                    let _ = app.emit(
-                                        "transcription-done",
-                                        str::to_string("Error: err_transcription_failed"),
-                                    );
-                                    continue;
+                        ActiveModel::Ggml { _model: _, session } => {
+                            if let Some(mut stream) = active_stream.take() {
+                                if let Ok(_update) = stream.finalize() {
+                                    let final_t = stream.text().display();
+                                    let final_committed = stream.text().committed;
+
+                                    let is_mini = settings.overlay_skin == "mini";
+                                    let is_streaming = settings.streaming_input;
+
+                                    if is_mini && is_streaming && !live_typing_aborted {
+                                        if final_committed.len() > last_typed_committed_len {
+                                            let delta = &final_committed[last_typed_committed_len..];
+                                            let target_hwnd = {
+                                                let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<crate::audio::AudioState>>>();
+                                                let state = state_arc.inner().lock().unwrap();
+                                                state.target_hwnd
+                                            };
+                                            let _ = crate::paste::type_text_delta(delta, target_hwnd);
+                                            last_typed_committed_len = final_committed.len();
+                                        }
+                                    }
+
+                                    if !final_t.trim().is_empty() {
+                                        result_text = final_t;
+                                    }
                                 }
-                            };
-
-                            let mut options = transcribe_cpp::RunOptions::default();
-                            if model_settings.language != "auto"
-                                && !model_settings.language.is_empty()
-                            {
-                                options.language = Some(model_settings.language.clone());
                             }
+                            last_emitted_text.clear();
+                            last_stream_emit_time = None;
 
-                            match session.run(&req.samples, &options) {
-                                Ok(res) => result_text = res.text,
-                                Err(_e) => {
-                                    let _ = app.emit(
-                                        "transcription-done",
-                                        str::to_string("Error: err_transcription_failed"),
-                                    );
-                                    continue;
+                            if result_text.trim().is_empty() {
+                                let mut options = transcribe_cpp::RunOptions::default();
+                                if model_settings.language != "auto"
+                                    && !model_settings.language.is_empty()
+                                {
+                                    options.language = Some(model_settings.language.clone());
+                                }
+
+                                match session.run(&req.samples, &options) {
+                                    Ok(res) => result_text = res.text,
+                                    Err(_e) => {
+                                        let _ = app.emit(
+                                            "transcription-done",
+                                            str::to_string("Error: err_transcription_failed"),
+                                        );
+                                        continue;
+                                    }
                                 }
                             }
                         }
@@ -453,7 +610,13 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                         continue;
                     }
 
-                    let mut should_paste = true;
+                    let settings = crate::settings::load_settings();
+                    let is_mini_live = settings.overlay_skin == "mini"
+                        && settings.streaming_input
+                        && was_streaming
+                        && !live_typing_aborted;
+
+                    let mut should_paste = !is_mini_live;
                     if let Some(main_win) = app.get_webview_window("main") {
                         if main_win.is_focused().unwrap_or(false) {
                             should_paste = false;

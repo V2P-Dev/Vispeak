@@ -394,6 +394,8 @@ pub fn cancel_action(app: AppHandle) {
 
     state.ducking_guard = None;
 
+    crate::transcribe::cancel_stream(&app);
+
     let _ = app.emit("recording-cancelled", ());
     if let Some(window) = app.get_webview_window("overlay") {
         crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: cancel_action)");
@@ -413,6 +415,8 @@ pub fn cancel_action_silently(app: AppHandle) {
     }
 
     state.ducking_guard = None;
+
+    crate::transcribe::cancel_stream(&app);
 
     // We emit a silent cancel so the frontend can reset its UI state without showing an error
     let _ = app.emit("recording-cancelled-silently", ());
@@ -435,6 +439,7 @@ pub fn force_stop_audio(app: AppHandle) {
     }
 
     state.ducking_guard = None;
+    crate::transcribe::cancel_stream(&app);
 }
 
 // Simple nearest-neighbor manual resampler
@@ -513,6 +518,11 @@ fn worker_process(
 
     let mut accumulated_samples = Vec::new();
     let max_samples = 16000 * 120; // 120 seconds
+
+    let is_streaming_enabled = !is_preview
+        && settings.streaming_input
+        && settings.active_model.as_deref() == Some("nemotron");
+    let mut stream_chunk_buffer: Vec<f32> = Vec::with_capacity(2400);
 
     let mut rms_sum = 0.0;
     let mut rms_count = 0;
@@ -593,6 +603,13 @@ fn worker_process(
 
             if let Some(resampled) = resampler.process(mono_sample) {
                 accumulated_samples.push(resampled);
+                if is_streaming_enabled {
+                    stream_chunk_buffer.push(resampled);
+                    if stream_chunk_buffer.len() >= 2400 {
+                        let chunk = std::mem::take(&mut stream_chunk_buffer);
+                        crate::transcribe::send_stream_chunk(&app, chunk);
+                    }
+                }
             }
 
             if accumulated_samples.len() >= max_samples {
@@ -606,6 +623,11 @@ fn worker_process(
                 break;
             }
         }
+    }
+
+    if is_streaming_enabled && !stream_chunk_buffer.is_empty() {
+        let chunk = std::mem::take(&mut stream_chunk_buffer);
+        crate::transcribe::send_stream_chunk(&app, chunk);
     }
 
     eprintln!("[info][audio] Worker loop exited: received {} raw samples, accumulated {} resampled mono samples (resampler in: {}, out: {}).", total_samples_received, accumulated_samples.len(), resampler.input_count, resampler.output_count);

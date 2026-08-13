@@ -47,6 +47,7 @@ export const translations = {
         "gigaam": "Лучшая для русского языка.",
         "nemotron": "Качественная мультиязычная модель от NVIDIA (40 языков).",
         "qwen": "Мультиязычная модель Qwen с поддержкой русского языка.",
+        "qwen3-asr-0.6b": "Многоязычная модель (30 языков). На чистой русской речи работает неплохо, но заметно хуже основных моделей распознаёт смешанную русско-английскую IT-терминологию (специальные термины/названия могут искажаться).",
       },
       tags: {
         "Punctuation": "Пунктуация",
@@ -174,6 +175,9 @@ export const translations = {
       auto_unload_1min: "Через 1 минуту",
       auto_unload_5min: "Через 5 минут",
       auto_unload_15min: "Через 15 минут",
+      streaming_input: "Потоковый ввод (Live Text)",
+      streaming_input_desc: "Показывает распознаваемый текст в реальном времени во время речи в Полном оверлее",
+      streaming_warning_non_nemotron: "Потоковый ввод пока работает только с моделью Nemotron 3.5 ASR Streaming. Для текущей модели он не будет активирован — вместо этого используется обычная анимация записи.",
     },
     history: {
       title: "История",
@@ -287,7 +291,8 @@ export const translations = {
         "canary": "Most accurate multilingual model (requires language selection).",
         "gigaam": "Best for Russian language.",
         "nemotron": "High-quality multilingual model from NVIDIA (40 languages).",
-        "qwen": "Multilingual Qwen model with Russian language support."
+        "qwen": "Multilingual Qwen model with Russian language support.",
+        "qwen3-asr-0.6b": "Multilingual model (30 languages). Handles clean Russian speech reasonably well, but noticeably weaker than the main models at recognizing mixed Russian-English IT terminology (technical terms/names may get garbled)."
       },
       tags: {
         "Punctuation": "Punctuation",
@@ -415,6 +420,9 @@ export const translations = {
       auto_unload_1min: "After 1 minute",
       auto_unload_5min: "After 5 minutes",
       auto_unload_15min: "After 15 minutes",
+      streaming_input: "Streaming Input (Live Text)",
+      streaming_input_desc: "Shows transcribed text in real-time while speaking in Full Overlay",
+      streaming_warning_non_nemotron: "Streaming input currently only works with Nemotron 3.5 ASR Streaming. It won't be activated for the current model — standard recording animation will be used instead.",
     },
     history: {
       title: "History",

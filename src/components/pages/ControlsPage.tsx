@@ -19,6 +19,8 @@ export function ControlsPage({ lang }: ControlsPageProps) {
   const [isRecordingCancelHotkey, setIsRecordingCancelHotkey] = useState(false);
 
   const [pushToTalk, setPushToTalk] = useState(false);
+  const [streamingInput, setStreamingInput] = useState(false);
+  const [streamingWarning, setStreamingWarning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -37,6 +39,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
       setCurrentCancelHotkey(s.cancel_hotkey || "Escape");
       setInputCancelHotkey(s.cancel_hotkey || "Escape");
       setPushToTalk(!!s.push_to_talk);
+      if (s.streaming_input !== undefined) setStreamingInput(!!s.streaming_input);
       setModelSettings(s.model_settings || {});
       setActiveModelId(s.active_model || null);
       setTextInputMethod(s.text_input_method || "paste");
@@ -46,6 +49,23 @@ export function ControlsPage({ lang }: ControlsPageProps) {
     });
     invoke<ModelInfo[]>("get_models").then(setModels);
   }, []);
+
+  const handleToggleStreamingInput = async () => {
+    const nextVal = !streamingInput;
+    setStreamingInput(nextVal);
+    await invoke("update_single_setting", { key: "streaming_input", value: nextVal });
+
+    if (nextVal) {
+      const settings = await invoke<any>("get_settings");
+      const model = settings.active_model || activeModelId;
+      if (model !== "nemotron") {
+        setStreamingWarning(t(lang, "general.streaming_warning_non_nemotron"));
+        setTimeout(() => setStreamingWarning(null), 7000);
+      }
+    } else {
+      setStreamingWarning(null);
+    }
+  };
 
   const saveSettings = async (updates: { hotkey?: string; cancel_hotkey?: string; push_to_talk?: boolean }) => {
     setError(null);
@@ -259,6 +279,36 @@ export function ControlsPage({ lang }: ControlsPageProps) {
           >
             <div className={`w-5 h-5 rounded-full absolute top-0.5 shadow-sm transition-all duration-300 ${pushToTalk ? 'left-[22px] bg-accent-text' : 'left-[3px] bg-knob opacity-70'}`}></div>
           </button>
+        </div>
+
+        {/* Streaming Input Row */}
+        <div className="flex flex-col gap-2 p-5 border-b border-border">
+          <div className="flex items-center justify-between cursor-pointer" onClick={handleToggleStreamingInput}>
+            <div className="flex items-center gap-2 group min-w-0">
+              <span className="text-sm font-medium text-primary truncate">
+                {t(lang, "general.streaming_input")}
+              </span>
+              <div className="relative flex items-center justify-center">
+                <Info className="w-4 h-4 text-secondary opacity-50 cursor-help transition-opacity group-hover:opacity-100" />
+                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-3 py-1.5 bg-surface border border-border text-primary text-xs rounded-lg w-64 text-center opacity-0 pointer-events-none transition-opacity group-hover:opacity-100 shadow-xl z-10 whitespace-normal leading-relaxed">
+                  {t(lang, "general.streaming_input_desc")}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleToggleStreamingInput(); }}
+              className={`w-11 h-6 rounded-full transition-colors relative ${streamingInput ? 'bg-accent' : 'bg-window border border-border'}`}
+            >
+              <div className={`w-5 h-5 rounded-full absolute top-0.5 shadow-sm transition-all duration-300 ${streamingInput ? 'left-[22px] bg-accent-text' : 'left-[3px] bg-knob opacity-70'}`}></div>
+            </button>
+          </div>
+
+          {streamingWarning && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs font-medium flex items-start gap-2.5 mt-1">
+              <Info className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+              <span>{streamingWarning}</span>
+            </div>
+          )}
         </div>
 
         {/* Cancel Hotkey Row */}

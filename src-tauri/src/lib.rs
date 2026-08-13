@@ -267,6 +267,58 @@ pub fn show_overlay(app: tauri::AppHandle) {
 }
 
 #[tauri::command]
+fn resize_overlay_window(app: tauri::AppHandle, logical_height: f64) {
+    if let Some(window) = app.get_webview_window("overlay") {
+        let scale_factor = window.scale_factor().unwrap_or(1.0);
+        let curr_pos = match window.outer_position() {
+            Ok(pos) => pos,
+            Err(_) => return,
+        };
+        let curr_size = match window.outer_size() {
+            Ok(size) => size,
+            Err(_) => return,
+        };
+
+        let target_phys_height = (logical_height * scale_factor).round() as u32;
+
+        if target_phys_height == curr_size.height {
+            return;
+        }
+
+        let bottom_y = curr_pos.y + curr_size.height as i32;
+        let mut new_y = bottom_y - target_phys_height as i32;
+
+        use windows::Win32::Foundation::POINT;
+        use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+
+        let pt = POINT {
+            x: curr_pos.x + (curr_size.width as i32) / 2,
+            y: curr_pos.y + (curr_size.height as i32) / 2,
+        };
+        let hmonitor = unsafe { MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST) };
+        let mut mi: MONITORINFO = unsafe { std::mem::zeroed() };
+        mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+        if unsafe { GetMonitorInfoW(hmonitor, &mut mi) }.as_bool() {
+            let min_top = mi.rcWork.top + (12.0 * scale_factor) as i32;
+            if new_y < min_top {
+                new_y = min_top;
+            }
+        }
+
+        let final_phys_height = (bottom_y - new_y) as u32;
+
+        let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition::new(
+            curr_pos.x,
+            new_y,
+        )));
+        let _ = window.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+            curr_size.width,
+            final_phys_height,
+        )));
+    }
+}
+
+#[tauri::command]
 fn restart_app(app: tauri::AppHandle) {
     app.restart();
 }
@@ -427,6 +479,7 @@ pub fn run() {
             update_tray_lang,
             update_tray_tooltip,
             restart_app,
+            resize_overlay_window,
             history::get_history,
             history::delete_history_record,
             history::clear_history,

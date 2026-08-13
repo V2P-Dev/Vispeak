@@ -3,6 +3,9 @@ use enigo::{Enigo, Key, KeyboardControllable};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use windows::Win32::Foundation::HWND;
+use windows::Win32::UI::Input::KeyboardAndMouse::{
+    SendInput, INPUT, INPUT_0, INPUT_KEYBOARD, KEYBDINPUT, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE,
+};
 use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -207,6 +210,55 @@ pub fn paste_text(text: &str, target_hwnd: Option<isize>) -> bool {
     }
 
     false
+}
+
+pub fn type_text_delta(text: &str, target_hwnd: Option<isize>) -> bool {
+    if text.is_empty() {
+        return true;
+    }
+    if let Some(hwnd_val) = target_hwnd {
+        unsafe {
+            let fg = GetForegroundWindow();
+            if fg.0 as isize != hwnd_val {
+                return false;
+            }
+        }
+    }
+
+    let utf16_units: Vec<u16> = text.encode_utf16().collect();
+    if utf16_units.is_empty() {
+        return true;
+    }
+
+    let mut inputs: Vec<INPUT> = Vec::with_capacity(utf16_units.len() * 2);
+    for &ch in &utf16_units {
+        let mut ki_down: KEYBDINPUT = unsafe { std::mem::zeroed() };
+        ki_down.wScan = ch;
+        ki_down.dwFlags = KEYEVENTF_UNICODE;
+
+        inputs.push(INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 { ki: ki_down },
+        });
+
+        let mut ki_up: KEYBDINPUT = unsafe { std::mem::zeroed() };
+        ki_up.wScan = ch;
+        ki_up.dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP;
+
+        inputs.push(INPUT {
+            r#type: INPUT_KEYBOARD,
+            Anonymous: INPUT_0 { ki: ki_up },
+        });
+    }
+
+    unsafe {
+        SendInput(
+            &inputs,
+            std::mem::size_of::<INPUT>() as i32,
+        );
+    }
+
+    true
 }
 
 #[cfg(test)]

@@ -38,7 +38,8 @@ const MODEL_TAGS: Record<string, string[]> = {
   "canary": ["Multilingual"],
   "gigaam": ["Punctuation", "Russian", "Recommended"],
   "nemotron": ["Punctuation", "Multilingual"],
-  "qwen": ["Punctuation", "Multilingual"]
+  "qwen": ["Punctuation", "Multilingual"],
+  "qwen3-asr-0.6b": ["Punctuation", "Multilingual"]
 };
 
 const WaveformDivider = () => (
