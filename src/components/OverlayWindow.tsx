@@ -9,79 +9,472 @@ type AppInfo = {
   icon_base64: string;
 };
 
-function Visualizer({ level, colorClass = "bg-accent", pulse = false, count = 52, maxHeight = 24 }: { level: number, colorClass?: string, pulse?: boolean, count?: number, maxHeight?: number }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+function parseColorToRgb(colorStr: string): [number, number, number] | null {
+  colorStr = colorStr.trim();
+  if (colorStr.startsWith("#")) {
+    let hex = colorStr.slice(1);
+    if (hex.length === 3) {
+      hex = hex.split("").map(c => c + c).join("");
+    }
+    if (hex.length === 6) {
+      const num = parseInt(hex, 16);
+      return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+    }
+  }
+  const rgbMatch = colorStr.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (rgbMatch) {
+    return [parseInt(rgbMatch[1], 10), parseInt(rgbMatch[2], 10), parseInt(rgbMatch[3], 10)];
+  }
+  return null;
+}
+
+function getComputedAccentRgb(): [number, number, number] {
+  const style = getComputedStyle(document.documentElement);
+  const rgbStr = style.getPropertyValue('--accent-rgb').trim();
+  if (rgbStr) {
+    const parts = rgbStr.split(',').map(s => parseInt(s.trim(), 10));
+    if (parts.length === 3 && !parts.some(isNaN)) {
+      return [parts[0], parts[1], parts[2]];
+    }
+  }
+  const accentStr = style.getPropertyValue('--accent').trim();
+  if (accentStr) {
+    const parsed = parseColorToRgb(accentStr);
+    if (parsed) return parsed;
+  }
+  return [255, 85, 51];
+}
+
+// 1. СПЕКТР (Spectrum - High-DPI Canvas с принудительным выравниванием по физическим пикселям)
+function SpectrumVisualizer({ level, colorClass = "bg-accent", pulse = false, count = 46, maxHeight = 24 }: { level: number, colorClass?: string, pulse?: boolean, count?: number, maxHeight?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const levelRef = useRef(level);
   const pulseRef = useRef(pulse);
 
-  useEffect(() => {
-    levelRef.current = level;
-  }, [level]);
-
-  useEffect(() => {
-    pulseRef.current = pulse;
-  }, [pulse]);
+  useEffect(() => { levelRef.current = level; }, [level]);
+  useEffect(() => { pulseRef.current = pulse; }, [pulse]);
 
   useEffect(() => {
     let animationFrameId: number;
-    const currentHeights = new Array(count).fill(3);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let heights: number[] = [];
     let lastTime = performance.now();
 
-    const update = (now: number) => {
+    const render = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
       const timeSec = now / 1000;
 
-      const rawLevel = levelRef.current;
-      const scaledLevel = Math.min(Math.pow(rawLevel, 0.4) * 2.5, 1.0);
-      const isPulse = pulseRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const wCss = Math.max(10, Math.floor(rect.width));
+      const hCss = Math.max(10, Math.floor(rect.height));
 
-      const maxBar = maxHeight || 24;
-      const container = containerRef.current;
+      const wPhys = Math.round(wCss * dpr);
+      const hPhys = Math.round(hCss * dpr);
 
-      if (container && container.children.length === count) {
+      if (canvas.width !== wPhys || canvas.height !== hPhys) {
+        canvas.width = wPhys;
+        canvas.height = hPhys;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // Reset transform to work in 100% integer physical pixels
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, wPhys, hPhys);
+
+        const isPulse = pulseRef.current;
+        const [r, g, b] = isPulse || colorClass === "bg-processing" ? [77, 216, 230] : getComputedAccentRgb();
+        const scaledLevel = isPulse ? 0.35 : Math.min(Math.pow(levelRef.current, 0.4) * 2.5, 1.0);
+
+        // Strict uniform integer physical pixel metrics:
+        const barWidthPx = Math.max(2, Math.round(2.0 * dpr));
+        const gapPx = Math.max(2, Math.round(4.0 * dpr));
+        const pitchPx = barWidthPx + gapPx;
+
+        // Number of bars
+        const totalWPx = count * barWidthPx + (count - 1) * gapPx;
+        const startXPx = Math.floor((wPhys - totalWPx) / 2);
+        const centerYPx = Math.floor(hPhys / 2);
+
+        if (heights.length !== count) {
+          heights = new Array(count).fill(3);
+        }
+
+        const maxHPx = Math.round((maxHeight || 24) * dpr);
+        const minHPx = Math.max(3, Math.round(3 * dpr));
+        const radiusPx = Math.min(barWidthPx / 2, Math.round(1.5 * dpr));
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+
         for (let i = 0; i < count; i++) {
-          // Asymmetric phase variation across bars without symmetrical envelope
           const noise1 = Math.sin(timeSec * 4.5 + i * 0.73);
           const noise2 = Math.cos(timeSec * 2.8 - i * 0.41);
           const variation = 0.5 + 0.5 * ((noise1 + noise2) * 0.5);
 
-          // Living baseline in silence (small 1-2px jitter)
           const livingBase = isPulse ? 0 : 0.04 + 0.05 * Math.sin(timeSec * 3.0 + i * 1.3);
-
           const activeLevel = isPulse ? 0.35 + 0.15 * variation : Math.max(livingBase, scaledLevel * (0.55 + 0.45 * variation));
-          const targetHeight = 3 + (maxBar - 3) * activeLevel;
+          const targetHeight = minHPx + (maxHPx - minHPx) * activeLevel;
 
-          // Asymmetric smoothing: fast attack (rise), slow decay (fall)
-          const current = currentHeights[i];
+          const current = heights[i];
           const speed = targetHeight > current ? 18.0 : 5.0;
-          currentHeights[i] = current + (targetHeight - current) * Math.min(1.0, speed * dt);
+          heights[i] = current + (targetHeight - current) * Math.min(1.0, speed * dt);
 
-          const el = container.children[i] as HTMLElement;
-          if (el) {
-            el.style.height = `${currentHeights[i].toFixed(2)}px`;
-          }
+          const hBarPx = Math.max(minHPx, Math.round(heights[i]));
+          const xPx = startXPx + i * pitchPx;
+          const yPx = Math.floor(centerYPx - hBarPx / 2);
+
+          ctx.beginPath();
+          ctx.roundRect(xPx, yPx, barWidthPx, hBarPx, radiusPx);
+          ctx.fill();
         }
       }
 
-      animationFrameId = requestAnimationFrame(update);
+      animationFrameId = requestAnimationFrame(render);
     };
 
-    animationFrameId = requestAnimationFrame(update);
+    animationFrameId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [count, maxHeight]);
+  }, [colorClass, count, maxHeight]);
 
-  return (
-    <div ref={containerRef} className={`flex items-center justify-center gap-0.5 h-full w-full ${pulse ? 'animate-pulse opacity-80' : ''}`}>
-      {Array.from({ length: count }).map((_, i) => (
-        <div 
-          key={i}
-          className={`w-1 rounded-full ${colorClass}`}
-          style={{ height: '3px' }}
-        />
-      ))}
-    </div>
-  );
+  return <canvas ref={canvasRef} className={`w-full h-full block ${pulse ? 'animate-pulse opacity-80' : ''}`} />;
+}
+
+// 2. СПЕКТР-ВОЛНА (Spectrum Wave - без разрывов)
+function SpectrumWaveVisualizer({ level, colorClass = "bg-accent", pulse = false, maxHeight = 24 }: { level: number, colorClass?: string, pulse?: boolean, maxHeight?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const levelRef = useRef(level);
+  const pulseRef = useRef(pulse);
+
+  useEffect(() => { levelRef.current = level; }, [level]);
+  useEffect(() => { pulseRef.current = pulse; }, [pulse]);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let heights: number[] = [];
+    let lastTime = performance.now();
+
+    const render = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      const timeSec = now / 1000;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const wCss = Math.max(10, Math.floor(rect.width));
+      const hCss = Math.max(10, Math.floor(rect.height));
+
+      const wPhys = Math.round(wCss * dpr);
+      const hPhys = Math.round(hCss * dpr);
+
+      if (canvas.width !== wPhys || canvas.height !== hPhys) {
+        canvas.width = wPhys;
+        canvas.height = hPhys;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, wPhys, hPhys);
+
+        const isPulse = pulseRef.current;
+        const [r, g, b] = isPulse || colorClass === "bg-processing" ? [77, 216, 230] : getComputedAccentRgb();
+        const scaledLevel = isPulse ? 0.35 : Math.min(Math.pow(levelRef.current, 0.30) * 3.0, 1.0);
+
+        const barWidthPx = Math.max(1, Math.round(1.5 * dpr));
+        const gapPx = Math.max(2, Math.round(2.5 * dpr));
+        const pitchPx = barWidthPx + gapPx;
+        const count = Math.max(5, Math.floor((wPhys - Math.round(4 * dpr)) / pitchPx));
+        const totalWPx = count * barWidthPx + (count - 1) * gapPx;
+        const startXPx = Math.floor((wPhys - totalWPx) / 2);
+        const centerYPx = Math.floor(hPhys / 2);
+
+        if (heights.length !== count) {
+          heights = new Array(count).fill(3 * dpr);
+        }
+
+        const maxHPx = Math.round((maxHeight || 24) * dpr);
+        const minHPx = Math.max(2, Math.round(2.5 * dpr));
+        const radiusPx = Math.min(barWidthPx / 2, 1.5 * dpr);
+
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+
+        for (let i = 0; i < count; i++) {
+          const xPx = startXPx + i * pitchPx;
+          const normX = i / count;
+
+          const w1 = Math.sin(normX * Math.PI * 3.2 - timeSec * 3.8);
+          const w2 = Math.sin(normX * Math.PI * 5.4 - timeSec * 5.5 + 0.9);
+          const envelope = (w1 * 0.6 + w2 * 0.4 + 1.0) * 0.5;
+
+          const idleWave = minHPx + Math.round(1.5 * dpr) * Math.sin(normX * Math.PI * 2.0 - timeSec * 2.2);
+          const activeAmp = (maxHPx - idleWave) * (scaledLevel * 0.96 + 0.04);
+          const targetHeight = idleWave + activeAmp * envelope;
+
+          const speed = targetHeight > heights[i] ? 20.0 : 6.0;
+          heights[i] += (targetHeight - heights[i]) * Math.min(1.0, speed * dt);
+
+          const barHPx = Math.max(minHPx, Math.round(heights[i]));
+          const yPx = Math.floor(centerYPx - barHPx / 2);
+
+          ctx.beginPath();
+          ctx.roundRect(xPx, yPx, barWidthPx, barHPx, radiusPx);
+          ctx.fill();
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [colorClass, maxHeight]);
+
+  return <canvas ref={canvasRef} className={`w-full h-full block ${pulse ? 'animate-pulse opacity-80' : ''}`} />;
+}
+
+// 3. НИТИ-НЕОН (Neon Threads)
+function NeonThreadsVisualizer({ level, colorClass = "bg-accent", pulse = false, maxHeight = 24 }: { level: number, colorClass?: string, pulse?: boolean, maxHeight?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const levelRef = useRef(level);
+  const pulseRef = useRef(pulse);
+
+  useEffect(() => { levelRef.current = level; }, [level]);
+  useEffect(() => { pulseRef.current = pulse; }, [pulse]);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const render = (now: number) => {
+      const timeSec = now / 1000;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(10, Math.floor(rect.width));
+      const h = Math.max(10, Math.floor(rect.height));
+
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+
+        const isPulse = pulseRef.current;
+        const [r, g, b] = isPulse || colorClass === "bg-processing" ? [77, 216, 230] : getComputedAccentRgb();
+        const scaledLevel = isPulse ? 0.35 : Math.min(Math.pow(levelRef.current, 0.30) * 2.8, 1.0);
+
+        const centerY = h / 2;
+        const maxAmp = (maxHeight || 24) * 0.52;
+        const amp = 3 + (maxAmp - 3) * (0.10 + scaledLevel * 0.90);
+
+        const points = 36;
+        const dx = w / (points - 1);
+
+        // Thread 2 (soft secondary ribbon)
+        ctx.beginPath();
+        for (let i = 0; i < points; i++) {
+          const x = i * dx;
+          const normX = i / (points - 1);
+          const y = centerY + Math.sin(normX * Math.PI * 2.8 + timeSec * 3.2) * (amp * 0.8) * Math.sin(normX * Math.PI);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = `rgba(${r}, ${g}, ${b}, 0.38)`;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Thread 1 (bright primary ribbon)
+        ctx.beginPath();
+        for (let i = 0; i < points; i++) {
+          const x = i * dx;
+          const normX = i / (points - 1);
+          const y = centerY + Math.sin(normX * Math.PI * 2.2 - timeSec * 4.0 + 1.2) * amp * Math.sin(normX * Math.PI);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.lineWidth = 2.0;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        // Head comet particle
+        const headX = (timeSec * 50) % w;
+        const headNorm = headX / w;
+        const headY = centerY + Math.sin(headNorm * Math.PI * 2.2 - timeSec * 4.0 + 1.2) * amp * Math.sin(headNorm * Math.PI);
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.beginPath();
+        ctx.arc(headX, headY, 2.0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [colorClass, maxHeight]);
+
+  return <canvas ref={canvasRef} className={`w-full h-full block ${pulse ? 'animate-pulse opacity-80' : ''}`} />;
+}
+
+// 4. ЧАСТИЦЫ (Soft Particles)
+class SoftParticle {
+  w: number;
+  h: number;
+  x: number = 0;
+  y: number = 0;
+  vx: number = 0;
+  vy: number = 0;
+  baseSize: number = 1.2;
+  baseAlpha: number = 0.4;
+  seed: number;
+  angle: number;
+
+  constructor(w: number, h: number) {
+    this.w = w;
+    this.h = h;
+    this.seed = Math.random() * 100;
+    this.angle = Math.random() * Math.PI * 2;
+    this.reset();
+  }
+  reset() {
+    this.x = Math.random() * this.w;
+    this.y = Math.random() * this.h;
+    this.vx = (Math.random() - 0.5) * 0.2;
+    this.vy = (Math.random() - 0.5) * 0.2;
+    this.baseSize = 1.0 + Math.random() * 1.2;
+    this.baseAlpha = 0.3 + Math.random() * 0.45;
+  }
+  update(level: number, dt: number, timeSec: number) {
+    const driftX = Math.sin(this.seed + timeSec * 1.2) * 0.18;
+    const driftY = Math.cos(this.seed + timeSec * 0.9) * 0.18;
+
+    const swell = level * 0.45;
+    this.vx += (driftX + Math.cos(this.angle) * swell - this.vx * 0.08) * dt * 30;
+    this.vy += (driftY + Math.sin(this.angle) * swell - this.vy * 0.08) * dt * 30;
+
+    const speed = Math.hypot(this.vx, this.vy);
+    const maxSpeed = 0.8 + level * 1.8;
+    if (speed > maxSpeed) {
+      this.vx = (this.vx / speed) * maxSpeed;
+      this.vy = (this.vy / speed) * maxSpeed;
+    }
+
+    this.x += this.vx * dt * 50;
+    this.y += this.vy * dt * 50;
+
+    if (this.x < 0) this.x = this.w;
+    if (this.x > this.w) this.x = 0;
+    if (this.y < 0) this.y = this.h;
+    if (this.y > this.h) this.y = 0;
+  }
+  draw(ctx: CanvasRenderingContext2D, r: number, g: number, b: number, level: number) {
+    const currentSize = this.baseSize * (1.0 + level * 0.5);
+    const alpha = Math.min(0.95, this.baseAlpha + level * 0.35);
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, currentSize, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function ParticlesVisualizer({ level, colorClass = "bg-accent", pulse = false, count = 32 }: { level: number, colorClass?: string, pulse?: boolean, count?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const levelRef = useRef(level);
+  const pulseRef = useRef(pulse);
+
+  useEffect(() => { levelRef.current = level; }, [level]);
+  useEffect(() => { pulseRef.current = pulse; }, [pulse]);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    let particles: SoftParticle[] = [];
+    let lastTime = performance.now();
+
+    const render = (now: number) => {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      const timeSec = now / 1000;
+
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(10, Math.floor(rect.width));
+      const h = Math.max(10, Math.floor(rect.height));
+
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        ctx.clearRect(0, 0, w, h);
+
+        const isPulse = pulseRef.current;
+        const [r, g, b] = isPulse || colorClass === "bg-processing" ? [77, 216, 230] : getComputedAccentRgb();
+        const scaledLevel = isPulse ? 0.35 : Math.min(Math.pow(levelRef.current, 0.4) * 2.0, 1.0);
+
+        if (particles.length !== count) {
+          particles = Array.from({ length: count }, () => new SoftParticle(w, h));
+        }
+
+        for (const p of particles) {
+          p.w = w;
+          p.h = h;
+          p.update(scaledLevel, dt, timeSec);
+          p.draw(ctx, r, g, b, scaledLevel);
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    animationFrameId = requestAnimationFrame(render);
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [colorClass, count]);
+
+  return <canvas ref={canvasRef} className={`w-full h-full block ${pulse ? 'animate-pulse opacity-80' : ''}`} />;
+}
+
+// Unified EqualizerVisualizer
+function EqualizerVisualizer(props: {
+  style?: string;
+  level: number;
+  colorClass?: string;
+  pulse?: boolean;
+  count?: number;
+  maxHeight?: number;
+}) {
+  const { style = "spectrum", ...rest } = props;
+  if (style === "spectrum_wave") {
+    return <SpectrumWaveVisualizer {...rest} />;
+  }
+  if (style === "neon_threads") {
+    return <NeonThreadsVisualizer {...rest} />;
+  }
+  if (style === "particles") {
+    return <ParticlesVisualizer {...rest} count={props.count ? Math.min(props.count, 42) : 32} />;
+  }
+  return <SpectrumVisualizer {...rest} />;
 }
 
 function useOverlayState() {
@@ -99,6 +492,7 @@ function useOverlayState() {
   
   const [lang, setLang] = useState<Language>("en");
   const [skin, setSkin] = useState<"full" | "compact" | "mini" | string>("full");
+  const [equalizerStyle, setEqualizerStyle] = useState<string>("spectrum");
 
   const hideTimeoutRef = useRef<number | null>(null);
 
@@ -114,6 +508,9 @@ function useOverlayState() {
       setLang(getLanguage(settings.app_language));
       if (settings.overlay_skin) {
         setSkin(settings.overlay_skin);
+      }
+      if (settings.equalizer_style) {
+        setEqualizerStyle(settings.equalizer_style);
       }
     });
 
@@ -244,6 +641,9 @@ function useOverlayState() {
          if (settings.overlay_skin) {
            setSkin(settings.overlay_skin);
          }
+         if (settings.equalizer_style) {
+           setEqualizerStyle(settings.equalizer_style);
+         }
        });
     });
 
@@ -263,7 +663,7 @@ function useOverlayState() {
     };
   }, [lang]);
 
-  return { level, statusText, liveText, errorText, appInfo, isRecording, isProcessing, isSuccess, isCopied, isError, lang, skin };
+  return { level, statusText, liveText, errorText, appInfo, isRecording, isProcessing, isSuccess, isCopied, isError, lang, skin, equalizerStyle };
 }
 
 function OverlayFull(props: ReturnType<typeof useOverlayState>) {
@@ -378,8 +778,8 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
             </div>
           ) : (
             <>
-              {isRecording && <Visualizer level={level} colorClass="bg-accent" />}
-              {isProcessing && <Visualizer level={0.0} colorClass="bg-processing" pulse />}
+              {isRecording && <EqualizerVisualizer style={props.equalizerStyle} level={level} colorClass="bg-accent" />}
+              {isProcessing && <EqualizerVisualizer style={props.equalizerStyle} level={0.0} colorClass="bg-processing" pulse />}
               {isSuccess && (
                 <div 
                   ref={contentRef} 
@@ -415,17 +815,17 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
   const { level, errorText, isRecording, isProcessing, isSuccess, isCopied, isError, lang } = props;
   
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dotCount, setDotCount] = useState(18);
+  const [dotCount, setDotCount] = useState(23);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver(entries => {
       for (let entry of entries) {
         const width = entry.contentRect.width;
-        // Dot takes 4px (w-1) + gap takes 2px (gap-0.5).
-        // Total width W = N * 4 + (N - 1) * 2 = 6N - 2
-        // N = Math.floor((W + 2) / 6)
-        setDotCount(Math.max(1, Math.floor((width + 2) / 6)));
+        // Bar is 2.0px + gap is 4.0px. Total pitch = 6.0px.
+        // Total width W = N * 2 + (N - 1) * 4 = 6N - 4
+        // N = Math.floor((W + 4) / 6)
+        setDotCount(Math.max(1, Math.floor((width + 4) / 6)));
       }
     });
     observer.observe(containerRef.current);
@@ -468,13 +868,13 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
             <line x1="12" x2="12" y1="19" y2="22"></line>
           </svg>
           <div ref={containerRef} className="flex-1 flex justify-center items-center overflow-hidden pl-4 pr-0">
-            <Visualizer level={level} colorClass="bg-accent" count={dotCount} />
+            <EqualizerVisualizer style={props.equalizerStyle} level={level} colorClass="bg-accent" count={dotCount} />
           </div>
         </div>
 
         {/* PROCESSING STATE */}
         <div className={`absolute inset-0 px-4 flex flex-row items-center justify-center transition-opacity duration-200 ${isProcessing ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-           <div className="flex flex-row items-center gap-1.5 mr-2">
+           <div className="flex flex-row items-center gap-2 mr-2">
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '0ms' }}></div>
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '150ms' }}></div>
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '300ms' }}></div>
@@ -517,14 +917,17 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
   const { level, isRecording, isProcessing, isSuccess, isCopied, isError } = props;
   
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dotCount, setDotCount] = useState(13);
+  const [dotCount, setDotCount] = useState(11);
 
   useEffect(() => {
     if (!containerRef.current) return;
     const observer = new ResizeObserver(entries => {
       for (let entry of entries) {
         const width = entry.contentRect.width;
-        setDotCount(Math.max(1, Math.floor((width + 2) / 6)));
+        // Bar is 2.0px + gap is 4.0px. Total pitch = 6.0px.
+        // Total width W = N * 2 + (N - 1) * 4 = 6N - 4
+        // N = Math.floor((W + 4) / 6)
+        setDotCount(Math.max(1, Math.floor((width + 4) / 6)));
       }
     });
     observer.observe(containerRef.current);
@@ -562,16 +965,16 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
         {/* RECORDING STATE */}
         <div className={`absolute inset-0 px-2.5 flex flex-row items-center justify-center transition-opacity duration-200 ${isRecording ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
           <div ref={containerRef} className="w-full h-6 flex justify-center items-center overflow-hidden">
-            <Visualizer level={level} colorClass="bg-accent" count={dotCount} maxHeight={22} />
+            <EqualizerVisualizer style={props.equalizerStyle} level={level} colorClass="bg-accent" count={dotCount} maxHeight={22} />
           </div>
         </div>
 
         {/* PROCESSING STATE */}
         <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isProcessing ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
-           <div className="flex flex-row items-center gap-2">
-             <div className="w-2 h-2 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '0ms' }}></div>
-             <div className="w-2 h-2 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '150ms' }}></div>
-             <div className="w-2 h-2 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '300ms' }}></div>
+           <div className="flex flex-row items-center gap-2.5">
+             <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '0ms' }}></div>
+             <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '150ms' }}></div>
+             <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '300ms' }}></div>
            </div>
         </div>
 

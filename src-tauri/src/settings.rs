@@ -59,6 +59,8 @@ pub struct Settings {
     pub auto_unload_idle_minutes: u32,
     #[serde(default = "default_accent_color")]
     pub accent_color: String,
+    #[serde(default = "default_equalizer_style")]
+    pub equalizer_style: String,
     #[serde(default)]
     pub streaming_input: bool,
 }
@@ -90,6 +92,9 @@ fn default_theme() -> String {
 }
 fn default_accent_color() -> String {
     "orange".to_string()
+}
+fn default_equalizer_style() -> String {
+    "spectrum".to_string()
 }
 fn default_true() -> bool {
     true
@@ -130,6 +135,7 @@ impl Default for Settings {
             app_language: default_app_language(),
             theme: default_theme(),
             accent_color: default_accent_color(),
+            equalizer_style: default_equalizer_style(),
             history_limit: default_history_limit(),
             auto_unload_idle_minutes: default_auto_unload_idle_minutes(),
             streaming_input: false,

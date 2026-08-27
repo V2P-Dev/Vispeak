@@ -22,6 +22,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
   const [historyLimit, setHistoryLimit] = useState(10);
   const [historySizeMb, setHistorySizeMb] = useState(0);
   const [skin, setSkin] = useState<"full" | "compact" | "mini" | string>("full");
+  const [equalizerStyle, setEqualizerStyle] = useState<string>("spectrum");
   const [position, setPosition] = useState<string>("bottom-center");
   const [autoUnload, setAutoUnload] = useState<number>(0);
 
@@ -76,6 +77,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
       if (s.duck_audio) setDuckAudio(!!s.duck_audio);
       if (s.history_limit !== undefined) setHistoryLimit(s.history_limit);
       if (s.overlay_skin) setSkin(s.overlay_skin);
+      if (s.equalizer_style) setEqualizerStyle(s.equalizer_style); else setEqualizerStyle("spectrum");
       if (s.overlay_position) setPosition(s.overlay_position);
       if (s.auto_unload_idle_minutes !== undefined) setAutoUnload(s.auto_unload_idle_minutes);
       if (s.app_language) setAppLanguage(s.app_language);
@@ -121,6 +123,7 @@ export function GeneralPage({ lang }: GeneralPageProps) {
       if (key === "microphone") setSelectedMic(value || "default");
       if (key === "microphone_gain") setGain(value);
       if (key === "overlay_skin") setSkin(value);
+      if (key === "equalizer_style") setEqualizerStyle(value);
       if (key === "overlay_position") setPosition(value);
       if (key === "theme") {
         setTheme(value);
@@ -283,12 +286,24 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               }}
               className={`flex-1 p-4 rounded-xl border-2 flex flex-col items-center gap-3 transition-colors ${accent === "orange" ? 'border-accent bg-accent/5' : 'border-border hover:border-border/80'}`}
             >
-              <div className="w-full h-16 bg-[#0d0d0d] rounded-lg border border-border/50 flex items-center justify-center p-2 relative overflow-hidden">
-                 <div className="w-24 h-8 bg-[#141414] rounded-full shadow-[0_0_16px_rgba(255,85,51,0.5)] flex items-center justify-center gap-1 px-3">
-                   <div className="w-1 h-2 bg-[#ff5533] rounded-full"></div>
-                   <div className="w-1 h-4 bg-[#ff5533] rounded-full"></div>
-                   <div className="w-1 h-3 bg-[#ff5533] rounded-full"></div>
-                   <div className="w-1 h-1.5 bg-[#ff5533] rounded-full"></div>
+              <div className="w-full h-16 rounded-lg border border-border/50 flex overflow-hidden relative">
+                 {/* Dark half */}
+                 <div className="w-1/2 h-full bg-[#0d0d0d] flex items-center justify-center p-1.5">
+                    <div className="w-full h-8 bg-[#141414] rounded-full border border-[#2a2a2e]/60 shadow-[0_0_12px_rgba(255,85,51,0.4)] flex items-center justify-center gap-1 px-1.5">
+                      <div className="w-0.5 h-2 bg-[#ff5533] rounded-full"></div>
+                      <div className="w-0.5 h-3.5 bg-[#ff5533] rounded-full"></div>
+                      <div className="w-0.5 h-2.5 bg-[#ff5533] rounded-full"></div>
+                      <div className="w-0.5 h-1.5 bg-[#ff5533] rounded-full"></div>
+                    </div>
+                 </div>
+                 {/* Light half */}
+                 <div className="w-1/2 h-full bg-[#f4f4f5] flex items-center justify-center p-1.5">
+                    <div className="w-full h-8 bg-[#ffffff] rounded-full border border-[#e4e4e7]/80 shadow-[0_0_12px_rgba(232,74,43,0.25)] flex items-center justify-center gap-1 px-1.5">
+                      <div className="w-0.5 h-2 bg-[#e84a2b] rounded-full"></div>
+                      <div className="w-0.5 h-3.5 bg-[#e84a2b] rounded-full"></div>
+                      <div className="w-0.5 h-2.5 bg-[#e84a2b] rounded-full"></div>
+                      <div className="w-0.5 h-1.5 bg-[#e84a2b] rounded-full"></div>
+                    </div>
                  </div>
               </div>
               <span className="text-sm font-medium text-primary">
@@ -643,15 +658,15 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${skin === "full" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
             >
               {/* Preview: full overlay — header row + recording bar */}
-              <div className="w-full h-[52px] rounded-lg flex flex-col p-1.5 gap-1 overflow-hidden" style={{background:'#141414', border:'1px solid #2a2a2e'}}>
+              <div className="w-full h-[52px] rounded-lg flex flex-col p-1.5 gap-1 overflow-hidden bg-window border border-border">
                 {/* header */}
                 <div className="flex justify-between items-center w-full px-0.5">
-                  <div className="h-1 rounded-full w-5" style={{background:'#3a3a3e'}}></div>
-                  <div className="h-1 rounded-full w-3" style={{background:'#2e2e32'}}></div>
+                  <div className="h-1 rounded-full w-5 bg-secondary/30"></div>
+                  <div className="h-1 rounded-full w-3 bg-secondary/20"></div>
                 </div>
                 {/* recording indicator bar */}
-                <div className="flex-1 w-full rounded flex items-center justify-center" style={{background:'#252528'}}>
-                  <div className={`h-1 rounded-full w-1/2 transition-colors ${skin === "full" ? 'bg-accent' : ''}`} style={skin !== "full" ? {background:'#4a4a50'} : {}}></div>
+                <div className="flex-1 w-full rounded flex items-center justify-center bg-surface border border-border/40">
+                  <div className={`h-1 rounded-full w-1/2 transition-colors ${skin === "full" ? 'bg-accent' : 'bg-secondary/30'}`}></div>
                 </div>
               </div>
               <span className={`text-xs font-medium ${skin === "full" ? 'text-accent' : 'text-secondary'}`}>
@@ -665,10 +680,10 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${skin === "compact" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
             >
               {/* Preview: compact — a single horizontal pill with dot + bar */}
-              <div className="w-full h-[52px] rounded-lg flex items-center justify-center" style={{background:'#141414', border:'1px solid #2a2a2e'}}>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{background:'#222224', border:'1px solid #333336'}}>
-                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${skin === "compact" ? 'bg-accent' : ''}`} style={skin !== "compact" ? {background:'#555558'} : {}}></div>
-                  <div className={`h-1 rounded-full w-8 transition-colors ${skin === "compact" ? 'bg-accent' : ''}`} style={skin !== "compact" ? {background:'#3a3a3e'} : {}}></div>
+              <div className="w-full h-[52px] rounded-lg flex items-center justify-center bg-window border border-border">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface border border-border/60">
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${skin === "compact" ? 'bg-accent' : 'bg-secondary/40'}`}></div>
+                  <div className={`h-1 rounded-full w-8 transition-colors ${skin === "compact" ? 'bg-accent' : 'bg-secondary/30'}`}></div>
                 </div>
               </div>
               <span className={`text-xs font-medium ${skin === "compact" ? 'text-accent' : 'text-secondary'}`}>
@@ -682,16 +697,16 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               className={`flex-1 p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${skin === "mini" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
             >
               {/* Preview: tiny pill above a text cursor line */}
-              <div className="w-full h-[52px] rounded-lg flex flex-col items-center justify-center gap-1" style={{background:'#141414', border:'1px solid #2a2a2e'}}>
+              <div className="w-full h-[52px] rounded-lg flex flex-col items-center justify-center gap-1 bg-window border border-border">
                 {/* tiny indicator pill */}
-                <div className="rounded-full px-1.5 flex items-center justify-center" style={{height:'10px', width:'36px', background:'#252528'}}>
-                  <div className={`h-0.5 w-full rounded-full transition-colors ${skin === "mini" ? 'bg-accent' : ''}`} style={skin !== "mini" ? {background:'#4a4a50'} : {}}></div>
+                <div className="rounded-full px-1.5 flex items-center justify-center h-[10px] w-[36px] bg-surface border border-border/60">
+                  <div className={`h-0.5 w-full rounded-full transition-colors ${skin === "mini" ? 'bg-accent' : 'bg-secondary/30'}`}></div>
                 </div>
                 {/* text cursor line */}
                 <div className="flex items-center gap-0.5">
-                  <div className="h-0.5 w-5 rounded-full" style={{background:'#333336'}}></div>
-                  <div className="h-3 w-px" style={{background:'#555558'}}></div>
-                  <div className="h-0.5 w-3 rounded-full" style={{background:'#2a2a2e'}}></div>
+                  <div className="h-0.5 w-5 rounded-full bg-secondary/40"></div>
+                  <div className="h-3 w-px bg-primary/80"></div>
+                  <div className="h-0.5 w-3 rounded-full bg-secondary/30"></div>
                 </div>
               </div>
               <span className={`text-xs font-medium ${skin === "mini" ? 'text-accent' : 'text-secondary'}`}>
@@ -705,6 +720,89 @@ export function GeneralPage({ lang }: GeneralPageProps) {
               {t(lang, "general.skin_mini_desc")}
             </div>
           )}
+        </div>
+
+        {/* Equalizer Style */}
+        <div className="p-5 bg-surface border border-border rounded-2xl flex flex-col gap-4">
+          <label className="text-base font-medium text-primary">
+            {t(lang, "general.equalizer_style")}
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+            {/* Spectrum */}
+            <button
+              onClick={() => updateSetting("equalizer_style", "spectrum")}
+              className={`p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${equalizerStyle === "spectrum" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
+            >
+              <div className="w-full h-[52px] rounded-lg flex items-center justify-center gap-1 overflow-hidden bg-window border border-border">
+                <div className={`w-[2px] h-3 rounded-full transition-colors ${equalizerStyle === "spectrum" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[2px] h-6 rounded-full transition-colors ${equalizerStyle === "spectrum" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[2px] h-4 rounded-full transition-colors ${equalizerStyle === "spectrum" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[2px] h-7 rounded-full transition-colors ${equalizerStyle === "spectrum" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[2px] h-5 rounded-full transition-colors ${equalizerStyle === "spectrum" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[2px] h-3 rounded-full transition-colors ${equalizerStyle === "spectrum" ? 'bg-accent' : 'bg-secondary/30'}`} />
+              </div>
+              <span className={`text-xs font-medium ${equalizerStyle === "spectrum" ? 'text-accent' : 'text-secondary'}`}>
+                {t(lang, "general.eq_spectrum")}
+              </span>
+            </button>
+
+            {/* Spectrum Wave */}
+            <button
+              onClick={() => updateSetting("equalizer_style", "spectrum_wave")}
+              className={`p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${equalizerStyle === "spectrum_wave" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
+            >
+              <div className="w-full h-[52px] rounded-lg flex items-center justify-center gap-[2px] overflow-hidden bg-window border border-border">
+                <div className={`w-[1.5px] h-2 rounded-full transition-colors ${equalizerStyle === "spectrum_wave" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[1.5px] h-3.5 rounded-full transition-colors ${equalizerStyle === "spectrum_wave" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[1.5px] h-5.5 rounded-full transition-colors ${equalizerStyle === "spectrum_wave" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[1.5px] h-7 rounded-full transition-colors ${equalizerStyle === "spectrum_wave" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[1.5px] h-5.5 rounded-full transition-colors ${equalizerStyle === "spectrum_wave" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[1.5px] h-3.5 rounded-full transition-colors ${equalizerStyle === "spectrum_wave" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                <div className={`w-[1.5px] h-2 rounded-full transition-colors ${equalizerStyle === "spectrum_wave" ? 'bg-accent' : 'bg-secondary/30'}`} />
+              </div>
+              <span className={`text-xs font-medium ${equalizerStyle === "spectrum_wave" ? 'text-accent' : 'text-secondary'}`}>
+                {t(lang, "general.eq_spectrum_wave")}
+              </span>
+            </button>
+
+            {/* Neon Threads */}
+            <button
+              onClick={() => updateSetting("equalizer_style", "neon_threads")}
+              className={`p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${equalizerStyle === "neon_threads" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
+            >
+              <div className="w-full h-[52px] rounded-lg flex items-center justify-center p-2 relative overflow-hidden bg-window border border-border">
+                <svg viewBox="0 0 50 24" className="w-12 h-6" fill="none">
+                  <path d="M2 14 C 15 4, 35 20, 48 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className={`transition-colors ${equalizerStyle === "neon_threads" ? 'text-accent/40' : 'text-secondary/30'}`} />
+                  <path d="M2 10 C 15 20, 35 4, 48 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={`transition-colors ${equalizerStyle === "neon_threads" ? 'text-accent' : 'text-secondary/60'}`} />
+                  <circle cx="25" cy="12" r="2" className={`transition-colors ${equalizerStyle === "neon_threads" ? 'fill-accent' : 'fill-secondary/60'}`} />
+                </svg>
+              </div>
+              <span className={`text-xs font-medium ${equalizerStyle === "neon_threads" ? 'text-accent' : 'text-secondary'}`}>
+                {t(lang, "general.eq_neon_threads")}
+              </span>
+            </button>
+
+            {/* Particles */}
+            <button
+              onClick={() => updateSetting("equalizer_style", "particles")}
+              className={`p-3 rounded-xl border-2 flex flex-col items-center gap-2.5 transition-all bg-surface ${equalizerStyle === "particles" ? 'border-accent shadow-md' : 'border-neutral-200 dark:border-neutral-700 shadow hover:border-neutral-300 dark:hover:border-neutral-600'}`}
+            >
+              <div className="w-full h-[52px] rounded-lg flex items-center justify-center p-2 relative overflow-hidden bg-window border border-border">
+                <div className="relative w-12 h-6 flex items-center justify-center">
+                  <div className={`absolute top-1 left-2 w-1.5 h-1.5 rounded-full transition-colors ${equalizerStyle === "particles" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                  <div className={`absolute bottom-1 left-4 w-2 h-2 rounded-full transition-colors ${equalizerStyle === "particles" ? 'bg-accent/80' : 'bg-secondary/40'}`} />
+                  <div className={`absolute top-2 left-6 w-1 h-1 rounded-full transition-colors ${equalizerStyle === "particles" ? 'bg-accent/60' : 'bg-secondary/20'}`} />
+                  <div className={`absolute bottom-2 right-3 w-1.5 h-1.5 rounded-full transition-colors ${equalizerStyle === "particles" ? 'bg-accent' : 'bg-secondary/30'}`} />
+                  <div className={`absolute top-1.5 right-1 w-2 h-2 rounded-full transition-colors ${equalizerStyle === "particles" ? 'bg-accent/70' : 'bg-secondary/40'}`} />
+                </div>
+              </div>
+              <span className={`text-xs font-medium ${equalizerStyle === "particles" ? 'text-accent' : 'text-secondary'}`}>
+                {t(lang, "general.eq_particles")}
+              </span>
+            </button>
+
+          </div>
         </div>
 
       </div>
