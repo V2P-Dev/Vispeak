@@ -158,12 +158,12 @@ function SpectrumWaveVisualizer({ level, colorClass = "bg-accent", pulse = false
     if (!canvas) return;
 
     let heights: number[] = [];
+    let phase = 0;
     let lastTime = performance.now();
 
     const render = (now: number) => {
       const dt = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
-      const timeSec = now / 1000;
 
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -185,7 +185,13 @@ function SpectrumWaveVisualizer({ level, colorClass = "bg-accent", pulse = false
 
         const isPulse = pulseRef.current;
         const [r, g, b] = isPulse || colorClass === "bg-processing" ? [77, 216, 230] : getComputedAccentRgb();
-        const scaledLevel = isPulse ? 0.35 : Math.min(Math.pow(levelRef.current, 0.30) * 3.0, 1.0);
+        const rawLevel = levelRef.current;
+        const scaledLevel = isPulse ? 0.35 : Math.min(Math.pow(rawLevel, 0.37) * 2.55, 1.0);
+
+        // Voice accelerates the wave travel speed dynamically:
+        // Slow calm drift in silence (2.8 rad/s), surging energetically on speech (up to 7.5 rad/s)
+        const waveSpeed = 2.8 + scaledLevel * 4.8;
+        phase += waveSpeed * dt;
 
         const barWidthPx = Math.max(1, Math.round(1.5 * dpr));
         const gapPx = Math.max(2, Math.round(2.5 * dpr));
@@ -209,15 +215,25 @@ function SpectrumWaveVisualizer({ level, colorClass = "bg-accent", pulse = false
           const xPx = startXPx + i * pitchPx;
           const normX = i / count;
 
-          const w1 = Math.sin(normX * Math.PI * 3.2 - timeSec * 3.8);
-          const w2 = Math.sin(normX * Math.PI * 5.4 - timeSec * 5.5 + 0.9);
-          const envelope = (w1 * 0.6 + w2 * 0.4 + 1.0) * 0.5;
+          // 1. Multi-harmonic wave components traveling with non-repeating interferences
+          const w1 = Math.sin(normX * Math.PI * 2.8 - phase);
+          const w2 = Math.sin(normX * Math.PI * 5.2 - phase * 1.55 + 1.2);
+          const w3 = Math.cos(normX * Math.PI * 1.6 - phase * 0.75);
+          const waveShape = (w1 * 0.50 + w2 * 0.30 + w3 * 0.20 + 1.0) * 0.5; // 0.0 .. 1.0
+          const flowEnvelope = 0.15 + 0.85 * waveShape;
 
-          const idleWave = minHPx + Math.round(1.5 * dpr) * Math.sin(normX * Math.PI * 2.0 - timeSec * 2.2);
-          const activeAmp = (maxHPx - idleWave) * (scaledLevel * 0.96 + 0.04);
-          const targetHeight = idleWave + activeAmp * envelope;
+          // 2. Per-bar chaotic spectral turbulence (unique dancing energy for every bar)
+          const j1 = Math.sin(phase * 2.3 + i * 1.57);
+          const j2 = Math.cos(phase * 1.5 - i * 2.31);
+          const j3 = Math.sin(phase * 3.7 + i * 3.19);
+          const barTexture = 0.35 + 0.65 * (0.5 + 0.28 * j1 + 0.14 * j2 + 0.08 * j3);
 
-          const speed = targetHeight > heights[i] ? 20.0 : 6.0;
+          // 3. Resting wave in silence + rich dynamic crests & valleys on voice
+          const idleBaseline = minHPx + Math.round(1.0 * dpr) * (0.5 + 0.5 * Math.sin(normX * Math.PI * 2.0 - phase * 0.6));
+          const voiceModulation = scaledLevel * flowEnvelope * barTexture;
+          const targetHeight = idleBaseline + (maxHPx - idleBaseline) * Math.min(1.0, voiceModulation * 1.25);
+
+          const speed = targetHeight > heights[i] ? 22.0 : 6.5;
           heights[i] += (targetHeight - heights[i]) * Math.min(1.0, speed * dt);
 
           const barHPx = Math.max(minHPx, Math.round(heights[i]));
