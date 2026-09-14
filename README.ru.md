@@ -48,20 +48,6 @@ Vispeak — desktop-приложение для локальной офлайн-
 - [Boosty](https://boosty.to/v2p/donate)
 - [DaLink](https://dalink.to/v2p)
 
-Криптокошельки:
-- **BTC**:
-  ```text
-  12tSjndfTjfttXsckBqQwbrZZADWbEeiLi
-  ```
-- **USDT (ERC20)**:
-  ```text
-  0xeff9305f8f48261c3f4b3990306bece26788a04c
-  ```
-- **USDT (TRC20)**:
-  ```text
-  TCVzqHNmYq9KZRbH3GcZgWNnQeet1hFckp
-  ```
-
 ## Требования (Windows)
 - Windows 10/11 (64-bit)
 - Если вы собираете из исходников, потребуется установленный Rust, Node.js, LLVM и MSVC Build Tools.

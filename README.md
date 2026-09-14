@@ -48,20 +48,6 @@ If you like Vispeak and want to support its development, you can do so here:
 - [Boosty](https://boosty.to/v2p/donate)
 - [DaLink](https://dalink.to/v2p)
 
-Crypto wallets:
-- **BTC**:
-  ```text
-  12tSjndfTjfttXsckBqQwbrZZADWbEeiLi
-  ```
-- **USDT (ERC20)**:
-  ```text
-  0xeff9305f8f48261c3f4b3990306bece26788a04c
-  ```
-- **USDT (TRC20)**:
-  ```text
-  TCVzqHNmYq9KZRbH3GcZgWNnQeet1hFckp
-  ```
-
 ## Requirements (Windows)
 - Windows 10/11 (64-bit)
 - To build from source, you need Rust, Node.js, LLVM, and MSVC Build Tools installed.
