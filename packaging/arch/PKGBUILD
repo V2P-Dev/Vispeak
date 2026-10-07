@@ -1,0 +1,35 @@
+# Build from the upstream repository. This recipe is not published to the AUR.
+pkgname=vispeak-git
+pkgver=1.3.0.r0.g0000000
+pkgrel=1
+pkgdesc='Offline voice dictation for Linux'
+arch=('x86_64')
+url='https://github.com/V2P-Dev/Vispeak'
+license=('MIT')
+depends=('gtk3' 'gtk-layer-shell' 'webkit2gtk-4.1' 'libappindicator-gtk3' 'alsa-lib' 'libx11' 'libxtst' 'libxi' 'xdotool' 'xclip' 'wl-clipboard' 'libpulse' 'xdg-desktop-portal')
+makedepends=('git' 'rust' 'nodejs' 'npm' 'clang' 'cmake' 'base-devel')
+provides=('vispeak')
+conflicts=('vispeak')
+source=('vispeak::git+https://github.com/V2P-Dev/Vispeak.git')
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$srcdir/vispeak"
+  local version
+  version=$(node -p "require('./package.json').version")
+  printf '%s.r%s.g%s' "$version" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cd "$srcdir/vispeak"
+  npm ci
+  npm run build:linux -- --no-bundle -- --locked
+}
+
+package() {
+  cd "$srcdir/vispeak"
+  install -Dm755 src-tauri/target/linux/release/vispeak "$pkgdir/usr/bin/vispeak"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 packaging/arch/vispeak.desktop "$pkgdir/usr/share/applications/app.vispeak.desktop"
+  install -Dm644 src-tauri/icons/128x128.png "$pkgdir/usr/share/icons/hicolor/128x128/apps/vispeak.png"
+}

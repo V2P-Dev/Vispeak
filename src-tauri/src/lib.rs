@@ -2,12 +2,28 @@ use std::sync::{Arc, Mutex};
 use tauri::Manager;
 
 pub mod audio;
+pub mod desktop;
+#[cfg(windows)]
 pub mod caret_position;
+#[cfg(target_os = "linux")]
+#[path = "linux/caret_position.rs"]
+pub mod caret_position;
+#[cfg(windows)]
+pub mod ducking;
+#[cfg(target_os = "linux")]
+#[path = "linux/ducking.rs"]
 pub mod ducking;
 pub mod history;
 pub mod hotkeys;
+#[cfg(windows)]
 pub mod icon;
+#[cfg(target_os = "linux")]
+pub mod linux;
 pub mod models;
+#[cfg(windows)]
+pub mod paste;
+#[cfg(target_os = "linux")]
+#[path = "linux/paste.rs"]
 pub mod paste;
 pub mod settings;
 pub mod transcribe;
@@ -27,6 +43,7 @@ pub fn log_debug(msg: &str) {
     }
 }
 
+#[cfg(windows)]
 pub fn show_overlay(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("overlay") {
         use std::mem;
@@ -266,8 +283,18 @@ pub fn show_overlay(app: tauri::AppHandle) {
     }
 }
 
+#[cfg(target_os = "linux")]
+pub fn show_overlay(app: tauri::AppHandle) {
+    linux::show_overlay(app);
+}
+
 #[tauri::command]
 fn resize_overlay_window(app: tauri::AppHandle, logical_height: f64) {
+    #[cfg(target_os = "linux")]
+    if linux::is_wayland() {
+        linux::overlay::resize(app, logical_height);
+        return;
+    }
     if let Some(window) = app.get_webview_window("overlay") {
         let scale_factor = window.scale_factor().unwrap_or(1.0);
         let curr_pos = match window.outer_position() {
@@ -288,21 +315,28 @@ fn resize_overlay_window(app: tauri::AppHandle, logical_height: f64) {
         let bottom_y = curr_pos.y + curr_size.height as i32;
         let mut new_y = bottom_y - target_phys_height as i32;
 
-        use windows::Win32::Foundation::POINT;
-        use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+        #[cfg(windows)]
+        {
+            use windows::Win32::Foundation::POINT;
+            use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MONITORINFO, MONITOR_DEFAULTTONEAREST};
 
-        let pt = POINT {
-            x: curr_pos.x + (curr_size.width as i32) / 2,
-            y: curr_pos.y + (curr_size.height as i32) / 2,
-        };
-        let hmonitor = unsafe { MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST) };
-        let mut mi: MONITORINFO = unsafe { std::mem::zeroed() };
-        mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
-        if unsafe { GetMonitorInfoW(hmonitor, &mut mi) }.as_bool() {
-            let min_top = mi.rcWork.top + (12.0 * scale_factor) as i32;
-            if new_y < min_top {
-                new_y = min_top;
+            let pt = POINT {
+                x: curr_pos.x + (curr_size.width as i32) / 2,
+                y: curr_pos.y + (curr_size.height as i32) / 2,
+            };
+            let hmonitor = unsafe { MonitorFromPoint(pt, MONITOR_DEFAULTTONEAREST) };
+            let mut mi: MONITORINFO = unsafe { std::mem::zeroed() };
+            mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+            if unsafe { GetMonitorInfoW(hmonitor, &mut mi) }.as_bool() {
+                let min_top = mi.rcWork.top + (12.0 * scale_factor) as i32;
+                if new_y < min_top {
+                    new_y = min_top;
+                }
             }
+        }
+        #[cfg(target_os = "linux")]
+        if let Ok(Some(monitor)) = window.current_monitor() {
+            new_y = new_y.max(monitor.position().y + (12.0 * scale_factor) as i32);
         }
 
         let final_phys_height = (bottom_y - new_y) as u32;
@@ -337,6 +371,7 @@ fn hide_overlay(app: tauri::AppHandle) {
 
     if let Some(window) = app.get_webview_window("overlay") {
         crate::log_debug("[OVERLAY_EVENT] Window HIDE (reason: hide_overlay command called)");
+        #[cfg(windows)]
         if let Ok(hwnd) = window.hwnd() {
             use windows::Win32::Foundation::HWND;
             use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
@@ -350,6 +385,12 @@ fn hide_overlay(app: tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Apply before GTK/WebKit or the async runtime starts any threads.
+    // WebKit's DMABUF renderer can cause fatal Wayland protocol errors.
+    #[cfg(target_os = "linux")]
+    if linux::is_wayland() && std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             if let Some(main_window) = app.get_webview_window("main") {
@@ -375,6 +416,7 @@ pub fn run() {
         })
         .manage(Arc::new(Mutex::new(AudioState::default())))
         .setup(|app| {
+            #[cfg(windows)]
             if let Some(window) = app.get_webview_window("overlay") {
                 if let Ok(hwnd) = window.hwnd() {
                     use windows::Win32::Foundation::HWND;
@@ -441,6 +483,8 @@ pub fn run() {
                 })
                 .build(app)?;
 
+            #[cfg(target_os = "linux")]
+            linux::setup(app.handle().clone());
             transcribe::init_transcriber(app);
             hotkeys::setup_hotkeys(app)?;
             ducking::restore_all_on_startup();
@@ -460,7 +504,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            desktop::configure_desktop_shortcuts,
             hide_overlay,
+            desktop::get_desktop_capabilities,
             audio::get_microphones,
             audio::start_preview,
             audio::stop_preview,

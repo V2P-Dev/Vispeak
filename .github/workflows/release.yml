@@ -25,7 +25,7 @@ jobs:
           targets: x86_64-pc-windows-msvc
 
       - name: install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Read release notes
         id: release_notes
@@ -50,5 +50,67 @@ jobs:
           tagName: v__VERSION__ 
           releaseName: 'v__VERSION__'
           releaseBody: ${{ steps.release_notes.outputs.body }}
-          releaseDraft: false
+          releaseDraft: true
           prerelease: false
+          updaterJsonPreferNsis: true
+
+  build-linux:
+    uses: ./.github/workflows/linux.yml
+
+  publish-release:
+    needs: [publish-tauri, build-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vispeak-linux-*
+          path: linux-artifacts
+      - name: Prepare distribution-specific assets
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          mkdir release-assets
+          for distro in ubuntu debian fedora; do
+            find "linux-artifacts/vispeak-linux-$distro" -type f \( -name '*.deb' -o -name '*.rpm' \) -print0 |
+              while IFS= read -r -d '' package; do
+                cp "$package" "release-assets/${RELEASE_TAG}-${distro}-$(basename "$package")"
+              done
+          done
+          install -Dm755 linux-artifacts/vispeak-linux-arch/vispeak arch-package/usr/bin/vispeak
+          install -Dm644 packaging/arch/vispeak.desktop arch-package/usr/share/applications/app.vispeak.desktop
+          install -Dm644 src-tauri/icons/128x128.png arch-package/usr/share/icons/hicolor/128x128/apps/vispeak.png
+          install -Dm644 LICENSE arch-package/usr/share/licenses/vispeak/LICENSE
+          cp packaging/arch/PKGBUILD "release-assets/${RELEASE_TAG}-arch-PKGBUILD"
+          tar -czf "release-assets/${RELEASE_TAG}-arch-x86_64.tar.gz" -C arch-package .
+      - name: Verify Windows updater manifest before publication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release download "$RELEASE_TAG" --pattern latest.json --pattern '*.exe.sig' --dir updater-check
+          python3 - <<'PYVERIFY'
+          import json, os
+          from pathlib import Path
+          manifest = json.loads(Path("updater-check/latest.json").read_text())
+          assert manifest["version"].lstrip("v") == os.environ["RELEASE_TAG"].lstrip("v")
+          platforms = manifest["platforms"]
+          windows = [value for key, value in platforms.items() if key.startswith("windows-x86_64")]
+          assert windows, "Missing Windows x64 updater"
+          for platform in windows:
+              url = platform["url"]
+              assert url.startswith("https://github.com/V2P-Dev/Vispeak/releases/download/" + os.environ["RELEASE_TAG"] + "/")
+              assert url.endswith("-setup.exe"), "Updater must use NSIS"
+              signature = Path("updater-check", url.rsplit("/", 1)[-1] + ".sig").read_text().strip()
+              assert signature and platform["signature"].strip() == signature
+          print("Windows NSIS updater manifest validated")
+          PYVERIFY
+      - name: Upload Linux assets and publish completed release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --latest

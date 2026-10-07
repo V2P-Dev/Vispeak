@@ -61,6 +61,7 @@ pub fn start_recording(app: AppHandle) -> Result<(), String> {
         std::thread::sleep(std::time::Duration::from_millis(80));
     }
 
+    crate::log_debug("[audio] recording requested");
     let app_clone = app.clone();
     spawn_audio_thread(app_clone, stop_rx, false);
 
@@ -139,7 +140,7 @@ fn run_audio_session(
     let dev_name = device
         .name()
         .unwrap_or_else(|_| "Unknown Device".to_string());
-    eprintln!("[info][audio] Creating cpal input stream: device='{}', channels={}, sample_rate={}, format={:?}", dev_name, channels, sample_rate, config.sample_format());
+    crate::log_debug(&format!("[audio] capture device={dev_name}, channels={channels}, sample_rate={sample_rate}, format={:?}", config.sample_format()));
 
     let (tx, rx): (Sender<f32>, Receiver<f32>) = unbounded();
 
@@ -230,7 +231,7 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
         let config = match device.default_input_config() {
             Ok(c) => c,
             Err(e) => {
-                eprintln!("[error][audio] Error getting config: {}", e);
+                crate::log_debug(&format!("[audio] config failed: {e}"));
                 let state_arc = app_clone.state::<Arc<Mutex<AudioState>>>();
                 let mut state = state_arc.inner().lock().unwrap();
                 state.is_recording = false;
@@ -290,7 +291,7 @@ fn spawn_audio_thread(app_clone: AppHandle, stop_rx: Receiver<()>, is_preview: b
                 }
             }
             Err(e) => {
-                eprintln!("[error][audio] Failed to start audio session: {}", e);
+                crate::log_debug(&format!("[audio] session start failed: {e}"));
                 let _ = app_clone.emit("show-error", "err_mic_not_found".to_string());
                 let state_arc = app_clone.state::<Arc<Mutex<AudioState>>>();
                 let mut state = state_arc.inner().lock().unwrap();
@@ -364,6 +365,7 @@ pub fn stop_recording(app: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
+    crate::log_debug("[audio] stop requested; processing begins");
     state.is_recording = false;
     state.is_processing = true;
     if let Some(tx) = state.stop_tx.take() {
@@ -630,7 +632,8 @@ fn worker_process(
         crate::transcribe::send_stream_chunk(&app, chunk);
     }
 
-    eprintln!("[info][audio] Worker loop exited: received {} raw samples, accumulated {} resampled mono samples (resampler in: {}, out: {}).", total_samples_received, accumulated_samples.len(), resampler.input_count, resampler.output_count);
+    let peak = accumulated_samples.iter().fold(0.0_f32, |peak, sample| peak.max(sample.abs()));
+    crate::log_debug(&format!("[audio] capture completed: raw_samples={total_samples_received}, mono_samples={}, peak={peak:.5}", accumulated_samples.len()));
 
     // Guard will drop automatically when state.ducking_guard is set to None below.
 
@@ -658,10 +661,7 @@ fn worker_process(
     // Call transcription
     if accumulated_samples.len() < 4000 {
         // < 0.25s at 16kHz
-        println!(
-            "Rejected: accumulated_samples.len() < 4000 ({})",
-            accumulated_samples.len()
-        );
+        crate::log_debug(&format!("[audio] rejected: fewer than 4000 samples ({})", accumulated_samples.len()));
         let _ = app.emit(
             "transcription-done",
             "Error: err_speech_not_recognized".to_string(),
@@ -674,7 +674,8 @@ fn worker_process(
 
     let mut vad = match crate::vad::VadSession::new() {
         Ok(v) => v,
-        Err(_e) => {
+        Err(error) => {
+            crate::log_debug(&format!("[audio] VAD initialization failed: {error}"));
             let _ = app.emit("show-error", "err_vad_failed".to_string());
             let state_arc = app.state::<Arc<Mutex<AudioState>>>();
             let mut state = state_arc.inner().lock().unwrap();
@@ -686,6 +687,7 @@ fn worker_process(
     let trimmed_samples = match vad.trim_silence(&accumulated_samples, target_sample_rate) {
         Ok(Some(s)) => s,
         Ok(None) => {
+            crate::log_debug("[audio] VAD rejected capture: no speech detected");
             let _ = app.emit(
                 "transcription-done",
                 "Error: err_speech_not_recognized".to_string(),
@@ -702,10 +704,7 @@ fn worker_process(
     };
 
     if trimmed_samples.len() < 4000 {
-        println!(
-            "Rejected: trimmed_samples.len() < 4000 ({})",
-            trimmed_samples.len()
-        );
+        crate::log_debug(&format!("[audio] rejected after VAD: fewer than 4000 samples ({})", trimmed_samples.len()));
         let _ = app.emit(
             "transcription-done",
             "Error: err_speech_not_recognized".to_string(),
@@ -716,10 +715,7 @@ fn worker_process(
         return WorkerResult::Completed;
     }
 
-    println!(
-        "Accepting audio for transcription, trimmed length: {}",
-        trimmed_samples.len()
-    );
+    crate::log_debug(&format!("[audio] sending {} samples for transcription", trimmed_samples.len()));
 
     let active_model = crate::settings::load_settings().active_model;
     if let Some(id) = active_model {

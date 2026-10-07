@@ -300,3 +300,8 @@ mod tests {
         assert_eq!(current, "СТАРОЕ");
     }
 }
+
+/// Windows can verify the focused target before each live typing delta.
+pub fn supports_live_typing() -> bool { true }
+
+pub fn try_paste_text(text: &str, target: Option<isize>) -> Result<bool, String> { Ok(paste_text(text, target)) }

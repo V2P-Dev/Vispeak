@@ -1,0 +1,89 @@
+name: Linux builds
+
+on:
+  workflow_call:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'package*.json'
+      - 'packaging/**'
+      - 'scripts/**'
+      - '.github/workflows/linux.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'package*.json'
+      - 'packaging/**'
+      - 'scripts/**'
+      - '.github/workflows/linux.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container: ${{ matrix.image }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu
+            image: ubuntu:24.04
+            bundles: deb
+          - distro: debian
+            image: debian:trixie
+            bundles: deb
+          - distro: fedora
+            image: fedora:44
+            bundles: rpm
+          - distro: arch
+            image: archlinux:latest
+            bundles: none
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_TERM_COLOR: always
+      CMAKE_BUILD_PARALLEL_LEVEL: '2'
+      CARGO_BUILD_JOBS: '2'
+    steps:
+      - name: Install Ubuntu and Debian build dependencies
+        if: matrix.distro == 'ubuntu' || matrix.distro == 'debian'
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y git curl ca-certificates build-essential cmake clang libclang-dev pkg-config libgtk-3-dev libgtk-layer-shell-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libasound2-dev libx11-dev libxtst-dev libxi-dev xclip xdotool xvfb xauth
+      - name: Install Fedora build dependencies
+        if: matrix.distro == 'fedora'
+        run: dnf install -y git curl gcc-c++ cmake clang clang-devel llvm-devel pkgconf-pkg-config gtk3-devel gtk-layer-shell-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel gtk-layer-shell-devel librsvg2-devel patchelf openssl-devel alsa-lib-devel libX11-devel libXtst-devel libXi-devel xclip xdotool xorg-x11-server-Xvfb xorg-x11-xauth rpm-build
+      - name: Install Arch build dependencies
+        if: matrix.distro == 'arch'
+        run: pacman -Syu --noconfirm git curl base-devel cmake clang rust nodejs npm pkgconf gtk3 gtk-layer-shell webkit2gtk-4.1 libappindicator-gtk3 librsvg patchelf openssl alsa-lib libx11 libxtst libxi xclip xdotool xorg-server-xvfb xorg-xauth
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci
+      - run: cargo check --locked --manifest-path src-tauri/Cargo.toml
+      - run: cargo test --locked --manifest-path src-tauri/Cargo.toml --lib
+      - name: Test X11 clipboard preservation
+        run: xvfb-run -a cargo test --locked --manifest-path src-tauri/Cargo.toml --lib paste::tests -- --ignored --test-threads=1
+      - name: Build distribution package
+        if: matrix.bundles != 'none'
+        run: npm run build:linux -- --bundles ${{ matrix.bundles }} -- --locked
+      - name: Build Arch executable
+        if: matrix.bundles == 'none'
+        run: npm run build:linux -- --no-bundle -- --locked
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vispeak-linux-${{ matrix.distro }}
+          path: |
+            src-tauri/target/linux/release/bundle/**/*.deb
+            src-tauri/target/linux/release/bundle/**/*.rpm
+            src-tauri/target/linux/release/vispeak
+          if-no-files-found: error

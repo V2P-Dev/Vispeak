@@ -688,17 +688,15 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
   const [cardHeight, setCardHeight] = useState(103);
   const [isExpanding, setIsExpanding] = useState(false);
 
-  let glowClass = "shadow-lg";
+  // Always-running glow animation keeps whole-card repaints (see OverlayCompact).
+  const glowClass = "animate-glow-pulse";
+  let glowVars: Record<string, string> = {};
   let footerText = t(lang, "overlay.cancel");
-  if (isRecording) {
-    glowClass = "animate-glow-pulse";
-  } else if (isProcessing) {
-    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.34)]";
+  if (isProcessing) {
+    glowVars = { "--glow-min": "rgba(77,216,230,0.22)", "--glow-max": "rgba(77,216,230,0.45)" };
     footerText = t(lang, "overlay.processing");
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.33)]";
-  } else if (isError) {
-    glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
+    glowVars = { "--glow-min": "rgba(126,212,145,0.22)", "--glow-max": "rgba(126,212,145,0.45)" };
   }
 
   const isActive = isRecording || isProcessing || isSuccess || isError;
@@ -752,12 +750,12 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
 
   return (
     <div className="flex w-full h-full items-end justify-center pb-6 px-6 pt-6 bg-transparent">
-      <div 
-        style={{ height: `${cardHeight}px` }}
-        className={`w-[311px] bg-overlay/95 backdrop-blur-md rounded-[20px] flex flex-col transition-[height,box-shadow,opacity,transform] duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden`}
+      <div
+        style={{ height: `${cardHeight}px`, borderRadius: "20px", ...glowVars } as React.CSSProperties}
+        className={`w-[311px] bg-overlay/95 rounded-[20px] flex flex-col transition-[height,opacity] duration-300 ${glowClass} ${isVisible ? 'opacity-100' : 'opacity-0'} overflow-hidden`}
       >
         {/* Header */}
-        <div className="flex flex-row items-center justify-between w-full px-3 py-1.5 border-b border-border/50 bg-surface/50 shrink-0 h-[32px]">
+        <div className="flex flex-row items-center justify-between w-full px-3 py-1.5 border-b border-border/50 bg-surface/50 shrink-0 h-[32px] rounded-t-[20px]">
           <div className="flex flex-row items-center gap-2 overflow-hidden flex-1">
             {appInfo?.icon_base64 ? (
               <img src={`data:image/png;base64,${appInfo.icon_base64}`} className="w-3.5 h-3.5 object-contain" />
@@ -784,7 +782,7 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
         {/* Center */}
         <div className="flex-1 w-full flex items-center justify-center px-4 py-1.5 overflow-hidden relative min-h-0">
           {hasLiveText ? (
-            <div 
+            <div
               ref={contentRef} 
               className={`w-full max-h-full ${isExpanding ? 'overflow-hidden' : 'overflow-y-auto'} px-1 py-1 text-center [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-secondary/40 [&::-webkit-scrollbar-thumb]:rounded-full`}
             >
@@ -797,7 +795,7 @@ function OverlayFull(props: ReturnType<typeof useOverlayState>) {
               {isRecording && <EqualizerVisualizer style={props.equalizerStyle} level={level} colorClass="bg-accent" />}
               {isProcessing && <EqualizerVisualizer style={props.equalizerStyle} level={0.0} colorClass="bg-processing" pulse />}
               {isSuccess && (
-                <div 
+                <div
                   ref={contentRef} 
                   className={`w-full max-h-full ${isExpanding ? 'overflow-hidden' : 'overflow-y-auto'} px-1 py-1 text-center [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-secondary/40 [&::-webkit-scrollbar-thumb]:rounded-full`}
                 >
@@ -848,16 +846,16 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
     return () => observer.disconnect();
   }, []);
 
-  let glowClass = "shadow-lg";
+  // The glow animation runs in every state (only its colors change). A constantly
+  // animating shadow forces WebKitGTK (software rendering) to repaint the whole
+  // capsule each frame; otherwise static states repaint only a small dirty rect.
+  const glowClass = "animate-glow-pulse";
+  let glowVars: Record<string, string> = {};
 
-  if (isRecording) {
-    glowClass = "animate-glow-pulse";
-  } else if (isProcessing) {
-    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.34)]";
+  if (isProcessing) {
+    glowVars = { "--glow-min": "rgba(77,216,230,0.22)", "--glow-max": "rgba(77,216,230,0.45)" };
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.33)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
-  } else if (isError) {
-    glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
+    glowVars = { "--glow-min": "rgba(126,212,145,0.22)", "--glow-max": "rgba(126,212,145,0.45)" };
   }
 
   const isActive = isRecording || isProcessing || isSuccess || isError;
@@ -874,10 +872,16 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
 
   return (
     <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
-      <div className={`w-[199px] h-[44px] px-4 bg-overlay/95 backdrop-blur-md rounded-full flex flex-row items-center transition-all duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden relative`}>
+      <div
+        style={{ borderRadius: "9999px", ...glowVars } as React.CSSProperties}
+        className={`w-[199px] h-[44px] px-4 bg-overlay/95 rounded-full flex flex-row items-center transition-opacity duration-200 ${glowClass} ${isVisible ? 'opacity-100' : 'opacity-0'} relative`}
+      >
         
         {/* RECORDING STATE */}
-        <div className={`absolute inset-0 px-4 flex flex-row items-center transition-opacity duration-200 ${isRecording ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 px-4 flex flex-row items-center rounded-full transition-opacity duration-200 ${isRecording ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-accent shrink-0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -889,7 +893,10 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
         </div>
 
         {/* PROCESSING STATE */}
-        <div className={`absolute inset-0 px-4 flex flex-row items-center justify-center transition-opacity duration-200 ${isProcessing ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 px-4 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isProcessing ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <div className="flex flex-row items-center gap-2 mr-2">
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '0ms' }}></div>
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '150ms' }}></div>
@@ -899,14 +906,20 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
         </div>
 
         {/* SUCCESS STATE */}
-        <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isSuccess && !isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isSuccess && !isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-6 h-6 text-success" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
              <polyline points="20 6 9 17 4 12"></polyline>
            </svg>
         </div>
 
         {/* COPIED STATE */}
-        <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isSuccess && isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isSuccess && isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5 text-success" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -914,7 +927,10 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
         </div>
 
         {/* ERROR STATE */}
-        <div className={`absolute inset-0 px-4 flex flex-row items-center transition-opacity duration-200 ${isError ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 px-4 flex flex-row items-center rounded-full transition-opacity duration-200 ${isError ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5 text-error shrink-0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
              <line x1="18" y1="6" x2="6" y2="18"></line>
              <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -950,16 +966,16 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
     return () => observer.disconnect();
   }, []);
 
-  let glowClass = "shadow-lg";
+  // The glow animation runs in every state (only its colors change). A constantly
+  // animating shadow forces WebKitGTK (software rendering) to repaint the whole
+  // capsule each frame; otherwise static states repaint only a small dirty rect.
+  const glowClass = "animate-glow-pulse";
+  let glowVars: Record<string, string> = {};
 
-  if (isRecording) {
-    glowClass = "animate-glow-pulse";
-  } else if (isProcessing) {
-    glowClass = "shadow-[0_0_20px_rgba(77,216,230,0.34)]";
+  if (isProcessing) {
+    glowVars = { "--glow-min": "rgba(77,216,230,0.22)", "--glow-max": "rgba(77,216,230,0.45)" };
   } else if (isSuccess) {
-    glowClass = "shadow-[0_0_20px_rgba(126,212,145,0.33)] animate-out slide-out-to-bottom-4 duration-500 delay-500";
-  } else if (isError) {
-    glowClass = "shadow-[0_0_20px_rgba(255,85,51,0.2)]";
+    glowVars = { "--glow-min": "rgba(126,212,145,0.22)", "--glow-max": "rgba(126,212,145,0.45)" };
   }
 
   const isActive = isRecording || isProcessing || isSuccess || isError;
@@ -976,17 +992,26 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
 
   return (
     <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
-      <div className={`w-[86px] h-[34px] px-2.5 bg-overlay/95 backdrop-blur-md rounded-full flex flex-row items-center justify-center transition-all duration-300 ${glowClass} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} overflow-hidden relative`}>
+      <div
+        style={{ borderRadius: "9999px", ...glowVars } as React.CSSProperties}
+        className={`w-[86px] h-[34px] px-2.5 bg-overlay/95 rounded-full flex flex-row items-center justify-center transition-opacity duration-200 ${glowClass} ${isVisible ? 'opacity-100' : 'opacity-0'} relative`}
+      >
         
         {/* RECORDING STATE */}
-        <div className={`absolute inset-0 px-2.5 flex flex-row items-center justify-center transition-opacity duration-200 ${isRecording ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 px-2.5 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isRecording ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
           <div ref={containerRef} className="w-full h-6 flex justify-center items-center overflow-hidden">
             <EqualizerVisualizer style={props.equalizerStyle} level={level} colorClass="bg-accent" count={dotCount} maxHeight={22} />
           </div>
         </div>
 
         {/* PROCESSING STATE */}
-        <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isProcessing ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isProcessing ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <div className="flex flex-row items-center gap-2.5">
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '0ms' }}></div>
              <div className="w-1.5 h-1.5 rounded-full bg-processing animate-processing-dot" style={{ animationDelay: '150ms' }}></div>
@@ -995,14 +1020,20 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
         </div>
 
         {/* SUCCESS STATE */}
-        <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isSuccess && !isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isSuccess && !isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-success" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
              <polyline points="20 6 9 17 4 12"></polyline>
            </svg>
         </div>
 
         {/* COPIED STATE */}
-        <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isSuccess && isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isSuccess && isCopied ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-success" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -1010,7 +1041,10 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
         </div>
 
         {/* ERROR STATE */}
-        <div className={`absolute inset-0 flex flex-row items-center justify-center transition-opacity duration-200 ${isError ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        <div
+          style={{ borderRadius: "9999px" }}
+          className={`absolute inset-0 flex flex-row items-center justify-center rounded-full transition-opacity duration-200 ${isError ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+        >
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-4 h-4 text-error" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
              <line x1="18" y1="6" x2="6" y2="18"></line>
              <line x1="6" y1="6" x2="18" y2="18"></line>

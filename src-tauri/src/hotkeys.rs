@@ -181,7 +181,7 @@ fn is_key_in_hotkey(key_str: &str, hotkey: &[String]) -> bool {
 }
 
 #[derive(Debug)]
-enum HotkeyAction {
+pub(crate) enum HotkeyAction {
     StartRecording,
     StopRecording,
     CancelRecording,
@@ -189,6 +189,7 @@ enum HotkeyAction {
     RawEvent(Event),
 }
 
+#[cfg(windows)]
 fn is_key_physically_pressed(key_str: &str) -> bool {
     use windows::Win32::UI::Input::KeyboardAndMouse::*;
     let vk = match key_str {
@@ -228,6 +229,12 @@ fn is_key_physically_pressed(key_str: &str) -> bool {
         _ => return true,
     };
     unsafe { (GetAsyncKeyState(vk) as i16) < 0 }
+}
+
+#[cfg(target_os = "linux")]
+fn is_key_physically_pressed(_key_str: &str) -> bool {
+    // X11 delivers release events; elapsed time alone cannot identify a stuck key.
+    true
 }
 
 fn prune_stuck_keys(current_event_key: Option<&str>) {
@@ -304,6 +311,8 @@ fn start_rdev_listener(tx: std::sync::mpsc::Sender<HotkeyAction>) {
         };
 
         if let Err(error) = rdev::listen(callback) {
+            #[cfg(target_os = "linux")]
+            crate::linux::report_error("err_linux_shortcuts", &format!("{error:?}"));
             eprintln!(
                 "Error starting rdev listener (gen #{}): {:?}",
                 my_gen, error
@@ -459,9 +468,13 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
                 }
                 HotkeyAction::StartRecording => {
                     let app_info = crate::paste::get_active_app_info();
+                    #[cfg(windows)]
                     let target_hwnd_hwnd = app_info
                         .as_ref()
                         .map(|info| windows::Win32::Foundation::HWND(info.hwnd as _));
+
+                    #[cfg(target_os = "linux")]
+                    let target_hwnd_hwnd = app_info.as_ref().map(|info| info.hwnd);
 
                     // Capture caret position IMMEDIATELY right at keypress before any delays/model loading
                     let (caret_pos, caret_method, mut caret_trace) =
@@ -559,9 +572,18 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
     });
 
     // Low level keyboard hook thread with watchdog & self-correction
+    #[cfg(windows)]
     start_rdev_listener(tx.clone());
+    #[cfg(target_os = "linux")]
+    if crate::linux::is_wayland() {
+        crate::linux::start_portal_hotkeys(app.handle().clone(), tx.clone());
+    } else {
+        start_rdev_listener(tx.clone());
+    }
 
+    #[cfg(windows)]
     let tx_watchdog = tx.clone();
+    #[cfg(windows)]
     std::thread::spawn(move || {
         use windows::Win32::System::SystemInformation::GetTickCount;
         use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
@@ -615,6 +637,8 @@ pub fn setup_hotkeys(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Err
 
 #[tauri::command]
 pub fn update_hotkey(_app: tauri::AppHandle, new_key: String) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    crate::linux::validate_hotkey_update(&_app, &new_key)?;
     let mut settings = crate::settings::load_settings();
 
     settings.hotkey = new_key.clone();
@@ -625,11 +649,16 @@ pub fn update_hotkey(_app: tauri::AppHandle, new_key: String) -> Result<(), Stri
         *hk = new_key.split('+').map(|s| s.to_string()).collect();
     }
 
+    #[cfg(target_os = "linux")]
+    crate::linux::refresh_portal_hotkeys();
+
     Ok(())
 }
 
 #[tauri::command]
 pub fn update_cancel_hotkey(_app: tauri::AppHandle, new_key: String) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    crate::linux::validate_hotkey_update(&_app, &new_key)?;
     let mut settings = crate::settings::load_settings();
 
     settings.cancel_hotkey = new_key.clone();
@@ -639,6 +668,9 @@ pub fn update_cancel_hotkey(_app: tauri::AppHandle, new_key: String) -> Result<(
         let mut hk = CANCEL_HOTKEY.lock().unwrap();
         *hk = new_key.split('+').map(|s| s.to_string()).collect();
     }
+
+    #[cfg(target_os = "linux")]
+    crate::linux::refresh_portal_hotkeys();
 
     Ok(())
 }

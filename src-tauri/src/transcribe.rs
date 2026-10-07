@@ -303,7 +303,7 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
 
                         let settings = crate::settings::load_settings();
                         let is_mini = settings.overlay_skin == "mini";
-                        let is_streaming = settings.streaming_input;
+                        let is_streaming = settings.streaming_input && crate::paste::supports_live_typing();
 
                         // Live typing into target window for Mini skin
                         if is_mini && is_streaming && !live_typing_aborted {
@@ -360,6 +360,8 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                 last_activity = std::time::Instant::now();
             }
             TranscribeMsg::Request(req) => {
+                crate::log_debug(&format!("[transcribe] request: samples={}, retranscription={}",
+                    req.samples.len(), req.is_retranscription.is_some()));
                 let app = req.app.clone();
                 last_app = Some(app.clone());
 
@@ -512,7 +514,7 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                                     let final_committed = stream.text().committed;
 
                                     let is_mini = settings.overlay_skin == "mini";
-                                    let is_streaming = settings.streaming_input;
+                                    let is_streaming = settings.streaming_input && crate::paste::supports_live_typing();
 
                                     if is_mini && is_streaming && !live_typing_aborted {
                                         if final_committed.len() > last_typed_committed_len {
@@ -559,6 +561,7 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                 }
 
                 let text = result_text.trim().to_string();
+                crate::log_debug(&format!("[transcribe] result: characters={}", text.chars().count()));
 
                 if let Some(history_id) = req.is_retranscription {
                     if text.is_empty() {
@@ -612,18 +615,22 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
 
                     let settings = crate::settings::load_settings();
                     let is_mini_live = settings.overlay_skin == "mini"
-                        && settings.streaming_input
+                        && settings.streaming_input && crate::paste::supports_live_typing()
                         && was_streaming
                         && !live_typing_aborted;
 
                     let mut should_paste = !is_mini_live;
                     if let Some(main_win) = app.get_webview_window("main") {
-                        if main_win.is_focused().unwrap_or(false) {
+                        if main_win.is_visible().unwrap_or(false)
+                            && main_win.is_focused().unwrap_or(false)
+                        {
+                            crate::log_debug("[paste] insertion skipped: visible main window is focused");
                             should_paste = false;
                         }
                     }
 
                     let mut is_copy = false;
+                    let mut paste_error = false;
                     if should_paste {
                         let target_hwnd = {
                             let state_arc = app.state::<std::sync::Arc<std::sync::Mutex<
@@ -632,7 +639,13 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                             let state = state_arc.inner().lock().unwrap();
                             state.target_hwnd
                         };
-                        is_copy = crate::paste::paste_text(&text, target_hwnd);
+                        match crate::paste::try_paste_text(&text, target_hwnd) {
+                            Ok(copied) => is_copy = copied,
+                            Err(error) => {
+                                crate::log_debug(&format!("[paste] {error}"));
+                                paste_error = true;
+                            }
+                        }
                     }
 
                     let (target_app_name, target_app_icon) = {
@@ -662,7 +675,9 @@ fn transcriber_worker(rx: Receiver<TranscribeMsg>) {
                     };
 
                     if !is_recording_now {
-                        if is_copy {
+                        if paste_error {
+                            let _ = app.emit("transcription-done", "Error: err_linux_paste");
+                        } else if is_copy {
                             let _ = app.emit("transcription-done", format!("COPIED:{}", text));
                         } else {
                             let _ = app.emit("transcription-done", text);

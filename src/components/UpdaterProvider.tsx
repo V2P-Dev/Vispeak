@@ -1,8 +1,11 @@
 import React, { createContext, useContext, useEffect, useState, useRef } from "react";
 import { check, Update } from "@tauri-apps/plugin-updater";
+import { invoke } from "@tauri-apps/api/core";
+import { DesktopCapabilities } from "../desktop";
 import { getVersion } from "@tauri-apps/api/app";
 
 export type UpdateStatus = 
+  | "package-managed"
   | "available"
   | "up-to-date"
   | "no-internet"
@@ -70,6 +73,11 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
     console.log("[UPDATER] Request started");
 
     try {
+      const capabilities = await invoke<DesktopCapabilities>("get_desktop_capabilities");
+      if (!capabilities.native_updater) {
+        setIsChecking(false);
+        return { status: "package-managed" };
+      }
       const update = await check();
       
       console.log("[UPDATER] HTTP status: 200 (implied, if check() succeeded)");

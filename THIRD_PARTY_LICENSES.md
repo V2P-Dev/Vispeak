@@ -17,6 +17,10 @@ All Rust dependencies used in this project are licensed under permissive license
 - `Unicode-3.0`
 - `Unlicense`
 
+Linux desktop portal integration uses `ashpd` (MIT). Linux builds statically link ONNX Runtime and the speech engines rather than shipping the Windows DLLs listed below.
+
+Linux overlays use `gtk`, `gdkwayland-sys`, `webkit2gtk`, `gtk-layer-shell` and `zbus` Rust bindings (MIT). The native gtk-layer-shell library (MIT) is provided by the distribution; GTK/WebKit retain their own upstream licenses.
+
 A full list of Rust dependencies and their exact license texts can be reproduced using `cargo license` or `cargo deny`.
 
 ## 2. Node.js & Frontend Dependencies

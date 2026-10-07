@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { DesktopCapabilities } from "../../desktop";
 import { invoke } from "@tauri-apps/api/core";
 import { Info, RotateCcw } from "lucide-react";
 import { Language, t } from "../../i18n";
@@ -12,11 +13,14 @@ interface ControlsPageProps {
 export function ControlsPage({ lang }: ControlsPageProps) {
   const [currentHotkey, setCurrentHotkey] = useState("");
   const [inputHotkey, setInputHotkey] = useState("");
+  const inputHotkeyRef = useRef("");
   const [isRecordingHotkey, setIsRecordingHotkey] = useState(false);
 
   const [currentCancelHotkey, setCurrentCancelHotkey] = useState("");
   const [inputCancelHotkey, setInputCancelHotkey] = useState("");
+  const inputCancelHotkeyRef = useRef("");
   const [isRecordingCancelHotkey, setIsRecordingCancelHotkey] = useState(false);
+
 
   const [pushToTalk, setPushToTalk] = useState(false);
   const [streamingInput, setStreamingInput] = useState(false);
@@ -28,6 +32,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   
   const [textInputMethod, setTextInputMethod] = useState("paste");
+  const [desktop, setDesktop] = useState<DesktopCapabilities | null>(null);
   const [clipboardAfter, setClipboardAfter] = useState("restore");
   const [trailingSpace, setTrailingSpace] = useState(false);
   const [sendAfter, setSendAfter] = useState("none");
@@ -50,7 +55,17 @@ export function ControlsPage({ lang }: ControlsPageProps) {
     invoke<ModelInfo[]>("get_models").then(setModels);
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const refresh = () => invoke<DesktopCapabilities>("get_desktop_capabilities")
+      .then(value => { if (mounted) setDesktop(value); }).catch(console.error);
+    void refresh();
+    const timer = window.setInterval(refresh, 2000);
+    return () => { mounted = false; window.clearInterval(timer); };
+  }, []);
+
   const handleToggleStreamingInput = async () => {
+    if (desktop && !desktop.live_typing) return;
     const nextVal = !streamingInput;
     setStreamingInput(nextVal);
     await invoke("update_single_setting", { key: "streaming_input", value: nextVal });
@@ -84,8 +99,8 @@ export function ControlsPage({ lang }: ControlsPageProps) {
         await invoke("update_push_to_talk", { enabled: updates.push_to_talk });
         setPushToTalk(updates.push_to_talk);
       }
-    } catch (err: any) {
-      setError(err.toString());
+    } catch (err: unknown) {
+      setError(String(err));
       if (updates.hotkey) setInputHotkey(currentHotkey);
       if (updates.cancel_hotkey) setInputCancelHotkey(currentCancelHotkey);
     }
@@ -125,24 +140,32 @@ export function ControlsPage({ lang }: ControlsPageProps) {
     if (!isCancel && !isRecordingHotkey) return;
     
     const keyStr = mapCodeToKeyName(e.code, e.key);
-    const parts = [];
-    if (e.ctrlKey || e.metaKey) parts.push("Control");
-    if (e.altKey) parts.push("Alt");
-    if (e.shiftKey) parts.push("Shift");
-    
-    if (!["ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight", "Control", "Shift", "Alt", "Meta"].includes(keyStr)) {
-        parts.push(keyStr);
+    const isModifierKey = ["ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight", "AltLeft", "AltRight", "MetaLeft", "MetaRight"].includes(keyStr);
+    const parts: string[] = [];
+
+    if (isModifierKey) {
+      // Single modifier key: use the specific left/right variant directly
+      parts.push(keyStr);
     } else {
-        if (parts.length === 0 || (parts.length === 1 && parts[0] === keyStr.replace(/Left|Right/, ""))) {
-            parts.length = 0;
-            parts.push(keyStr);
-        }
+      // Regular key: prepend held modifiers
+      if (e.ctrlKey || e.metaKey) parts.push("Control");
+      if (e.altKey) parts.push("Alt");
+      if (e.shiftKey) parts.push("Shift");
+      if (!["Control", "Shift", "Alt", "Meta"].includes(keyStr)) {
+        parts.push(keyStr);
+      }
     }
     
     const combo = parts.join("+");
-    if (isCancel) setInputCancelHotkey(combo);
-    else setInputHotkey(combo);
+    if (isCancel) {
+      setInputCancelHotkey(combo);
+      inputCancelHotkeyRef.current = combo;
+    } else {
+      setInputHotkey(combo);
+      inputHotkeyRef.current = combo;
+    }
   };
+
 
   const handleKeyUp = (e: React.KeyboardEvent, isCancel: boolean) => {
     e.preventDefault();
@@ -151,12 +174,13 @@ export function ControlsPage({ lang }: ControlsPageProps) {
     
     if (isCancel) {
       setIsRecordingCancelHotkey(false);
-      saveSettings({ cancel_hotkey: inputCancelHotkey });
+      saveSettings({ cancel_hotkey: inputCancelHotkeyRef.current });
     } else {
       setIsRecordingHotkey(false);
-      saveSettings({ hotkey: inputHotkey });
+      saveSettings({ hotkey: inputHotkeyRef.current });
     }
   };
+
 
   const handleResetHotkey = () => {
     setInputHotkey("Control+Space");
@@ -221,6 +245,35 @@ export function ControlsPage({ lang }: ControlsPageProps) {
         </p>
       </div>
 
+      {desktop?.wayland && (
+        <div className="mb-4 flex flex-col gap-2">
+          <p className="text-sm text-secondary">{t(lang, "controls.wayland_note")}</p>
+          {!desktop.input_ready && (
+            <p className="text-sm text-accent">{t(lang, "errors.err_linux_input_permission")}</p>
+          )}
+          {desktop.caret_available === false && (
+            <p className="text-sm text-accent">{t(lang, "controls.wayland_caret_unavailable")}</p>
+          )}
+          <p className="text-sm text-primary">
+            {t(lang, "controls.wayland_actual_shortcut")}: {desktop.record_shortcut === null
+              ? t(lang, "controls.wayland_shortcut_pending")
+              : desktop.record_shortcut || t(lang, "controls.wayland_shortcut_unassigned")}
+          </p>
+          <button type="button" disabled={desktop.record_shortcut === null}
+            className="self-start text-sm text-accent disabled:opacity-50"
+            onClick={async () => {
+              setError(null);
+              try { await invoke("configure_desktop_shortcuts"); }
+              catch (error: unknown) { setError(String(error)); }
+            }}>
+            {t(lang, "controls.wayland_configure_shortcuts")}
+          </button>
+        </div>
+      )}
+      {desktop?.errors.map(code => (
+        <p key={code} className="mb-4 text-sm text-accent">{t(lang, `errors.${code}`)}</p>
+      ))}
+
       <div className="bg-surface border border-border rounded-2xl flex flex-col">
         
         {/* Record Hotkey Row */}
@@ -242,8 +295,8 @@ export function ControlsPage({ lang }: ControlsPageProps) {
                   : 'border border-border bg-window hover:border-border/80'
               }`}
               tabIndex={0}
-              onFocus={() => { setIsRecordingHotkey(true); setInputHotkey(""); }}
-              onBlur={() => { setIsRecordingHotkey(false); setInputHotkey(currentHotkey); }}
+              onFocus={() => { setIsRecordingHotkey(true); setInputHotkey(""); inputHotkeyRef.current = ""; }}
+              onBlur={() => { setIsRecordingHotkey(false); setInputHotkey(currentHotkey); inputHotkeyRef.current = currentHotkey; }}
               onKeyDown={(e) => handleKeyDown(e, false)}
               onKeyUp={(e) => handleKeyUp(e, false)}
             >
@@ -296,10 +349,11 @@ export function ControlsPage({ lang }: ControlsPageProps) {
               </div>
             </div>
             <button
+              disabled={desktop?.live_typing === false}
               onClick={(e) => { e.stopPropagation(); handleToggleStreamingInput(); }}
-              className={`w-11 h-6 rounded-full transition-colors relative ${streamingInput ? 'bg-accent' : 'bg-window border border-border'}`}
+              className={`w-11 h-6 rounded-full transition-colors relative ${streamingInput && desktop?.live_typing !== false ? 'bg-accent' : 'bg-window border border-border'}`}
             >
-              <div className={`w-5 h-5 rounded-full absolute top-0.5 shadow-sm transition-all duration-300 ${streamingInput ? 'left-[22px] bg-accent-text' : 'left-[3px] bg-knob opacity-70'}`}></div>
+              <div className={`w-5 h-5 rounded-full absolute top-0.5 shadow-sm transition-all duration-300 ${streamingInput && desktop?.live_typing !== false ? 'left-[22px] bg-accent-text' : 'left-[3px] bg-knob opacity-70'}`}></div>
             </button>
           </div>
 
@@ -330,8 +384,8 @@ export function ControlsPage({ lang }: ControlsPageProps) {
                   : 'border border-border bg-window hover:border-border/80'
               }`}
               tabIndex={0}
-              onFocus={() => { setIsRecordingCancelHotkey(true); setInputCancelHotkey(""); }}
-              onBlur={() => { setIsRecordingCancelHotkey(false); setInputCancelHotkey(currentCancelHotkey); }}
+              onFocus={() => { setIsRecordingCancelHotkey(true); setInputCancelHotkey(""); inputCancelHotkeyRef.current = ""; }}
+              onBlur={() => { setIsRecordingCancelHotkey(false); setInputCancelHotkey(currentCancelHotkey); inputCancelHotkeyRef.current = currentCancelHotkey; }}
               onKeyDown={(e) => handleKeyDown(e, true)}
               onKeyUp={(e) => handleKeyUp(e, true)}
             >
@@ -525,7 +579,7 @@ export function ControlsPage({ lang }: ControlsPageProps) {
       {error && (
         <div className="mt-4 p-3 bg-error/10 border border-error/20 rounded-xl text-error text-sm flex items-center gap-2">
           <Info className="w-4 h-4" />
-          {error.includes("conflict") ? t(lang, "controls.conflict") : error}
+          {error.includes("conflict") ? t(lang, "controls.conflict") : error.startsWith("err_") ? t(lang, `errors.${error}`) : error}
         </div>
       )}
     </div>

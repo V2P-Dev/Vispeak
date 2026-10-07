@@ -16,6 +16,7 @@
   
   --radius-xl: 16px;
   --radius-lg: 12px;
+  --radius-full: 9999px;
 
   --animate-processing-dot: processing-dot 1.2s infinite ease-in-out both;
   --animate-glow-pulse: glow-pulse-accent 2s ease-in-out infinite;
@@ -180,6 +181,12 @@
     --shadow-accent-lg: 0 8px 24px rgba(13, 13, 13, 0.10);
     --glow-min: rgba(13, 13, 13, 0.10);
     --glow-max: rgba(13, 13, 13, 0.25);
+  }
+
+  html,
+  body,
+  #root {
+    background: transparent !important;
   }
 
   body {

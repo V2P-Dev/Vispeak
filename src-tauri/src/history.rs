@@ -334,9 +334,8 @@ pub fn repeat_paste_history_record(id: i64) -> Result<(), String> {
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_millis(1500));
 
-        let target_hwnd =
-            unsafe { windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow().0 as isize };
-        crate::paste::paste_text(&text, Some(target_hwnd));
+        let target_hwnd = crate::paste::get_active_app_info().map(|info| info.hwnd);
+        crate::paste::paste_text(&text, target_hwnd);
     });
 
     Ok(())

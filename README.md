@@ -61,11 +61,15 @@ If you like Vispeak and want to support its development, you can do so here:
 6. Release the keys. The transcribed text will be automatically pasted into the active window.
 7. You can cancel dictation by pressing `Esc` while recording.
 
+## Linux (x86_64)
+
+X11 and Wayland integrations, Ubuntu/Debian `.deb` and Fedora `.rpm` configurations, and an Arch build recipe are included. See the [Linux guide](docs/LINUX.md) for validation status, dependencies and desktop limitations. Starting with v1.3.0, release assets include Ubuntu/Debian `.deb`, Fedora `.rpm`, and an Arch executable archive with a source build recipe. Application testing is limited to Fedora 44 KDE Plasma 6.7.5 / KWin 6.7.5 on Wayland.
+
 ## Build from Source
 
 ```bash
 # Clone the repository
-git clone https://github.com/ViPunch/Vispeak.git
+git clone https://github.com/V2P-Dev/Vispeak.git
 cd Vispeak
 
 # Install dependencies

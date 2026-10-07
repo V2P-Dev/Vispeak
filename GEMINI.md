@@ -1,10 +1,10 @@
 # Agent rules for the Vispeak project
 
 ## About the project
-Vispeak is a Windows desktop application for local, offline voice transcription triggered by a global hotkey. The user presses Ctrl+Space, dictates, and the transcribed text is pasted into the active text field. Stack: Tauri 2, Rust (backend), React + TypeScript + Tailwind (frontend), whisper-rs, cpal, enigo, tauri-plugin-global-shortcut.
+Vispeak is a Windows and Linux desktop application for local, offline voice transcription triggered by a global hotkey. The user presses Ctrl+Space, dictates, and the transcribed text is pasted into the active text field. Stack: Tauri 2, Rust (backend), React + TypeScript + Tailwind (frontend), whisper-rs, cpal, enigo, tauri-plugin-global-shortcut.
 
 ## Core rules
-1. **Windows-only.** Do not write code, cfg branches, or dependencies for macOS/Linux. Do not add cross-platform abstractions "for the future".
+1. **Windows and Linux.** Keep Windows integrations behind `cfg(windows)` and Linux integrations behind `cfg(target_os = "linux")`. Linux targets Fedora, Arch, Ubuntu and Debian, with both X11 and Wayland. Do not add macOS code.
 2. **MVP scope only.** Do not add features that are not part of the current task: no transcription history, cloud APIs, telemetry, auto-updates, or text post-processing. If you believe a feature would be useful, suggest it in one line at the end of your reply — but do not implement it.
 3. **Do not break working code.** After every significant change, verify: `cargo check` for Rust, `npm run tauri dev` for a full run. Do not refactor working code unless the current task directly requires it.
 4. **docs/PLAN.md is the source of truth.** Read it at the start of every session. At the end of every task, update it: what was done, what remains, known issues, and build-problem solutions (Troubleshooting section).
@@ -31,7 +31,7 @@ Vispeak is a Windows desktop application for local, offline voice transcription 
 - Rust: modules by responsibility (audio, transcribe, models, paste, hotkeys, overlay); do not pile everything into main.rs/lib.rs.
 - TypeScript: strict mode, no `any`; Rust->frontend event types are described in one shared file.
 - Events between Rust and the frontend are named in kebab-case ("recording-started", "audio-level", "target-app") and listed in docs/PLAN.md.
-- Settings are a single JSON file in %APPDATA%/Vispeak, read/written through one settings module, with defaults when the file is missing or corrupted.
+- Settings are a single JSON file in the platform data directory (`settings::get_app_data_dir()`), read/written through one settings module, with defaults when the file is missing or corrupted.
 - Code comments in English, commit messages in English, communication with the user in Russian.
 
 ## Workflow

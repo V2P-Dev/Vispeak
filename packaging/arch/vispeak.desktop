@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Vispeak
+Comment=Offline voice dictation
+Comment[ru]=Офлайн-диктовка
+Exec=vispeak
+Icon=vispeak
+Terminal=false
+Categories=Utility;Audio;
+StartupWMClass=vispeak
