@@ -503,6 +503,8 @@ Tauri повторно умножал на scale_factor. Решено: стро�
 - [x] Выбран minor-релиз 1.3.0 для добавления Linux; версии package.json, package-lock.json, Cargo.toml/Cargo.lock, tauri.conf.json и Arch PKGBUILD синхронизированы.
 - [x] Release notes по шаблону: docs/release_notes_v1.3.0.md. Пользовательское тестирование ограничено Fedora Linux 44 KDE Plasma Desktop Edition, Plasma/KWin 6.7.5, Wayland. Проблемы скругления оверлея и визуальное положение каретки остаются неподтверждёнными.
 - [x] Workflow релиза собирает Windows, Ubuntu, Debian, Fedora и Arch. Релиз остаётся draft до успешных сборок и проверки Windows latest.json/NSIS подписи; затем публикуется как Latest. Публичный ключ и адрес updater сохранены.
+- [x] README.ru.md и README.md обновлены: описание возможностей, установка Windows/Ubuntu/Debian/Fedora/Arch, первый запуск, Wayland-разрешения и обновления.
+- [x] Dev-запуск v1.3.0 в Fedora Wayland прошёл: layer-shell без клавиатурного фокуса, Ctrl+Space зарегистрирован, keyboard portal access granted. Процесс штатно остановлен ограничением времени.
 - [x] npm run build; cargo check --locked --offline; cargo test --locked --offline --lib: 12 passed, 2 ignored. git diff --check и разбор YAML прошли.
 - [ ] Подтвердить сборки GitHub Actions, опубликованные assets и доступность latest.json по endpoint установленных Windows-версий.
 - [ ] Ручная проверка обновления из установленной Windows-версии, диктовки/PTT/отмены, буфера и геометрии оверлея.
