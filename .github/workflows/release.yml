@@ -97,7 +97,7 @@ jobs:
           manifest = json.loads(Path("updater-check/latest.json").read_text())
           assert manifest["version"].lstrip("v") == os.environ["RELEASE_TAG"].lstrip("v")
           platforms = manifest["platforms"]
-          windows = [value for key, value in platforms.items() if key.startswith("windows-x86_64")]
+          windows = [value for key, value in platforms.items() if key in ("windows-x86_64", "windows-x86_64-nsis")]
           assert windows, "Missing Windows x64 updater"
           for platform in windows:
               url = platform["url"]

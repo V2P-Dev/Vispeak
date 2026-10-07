@@ -508,3 +508,5 @@ Tauri повторно умножал на scale_factor. Решено: стро�
 - [x] npm run build; cargo check --locked --offline; cargo test --locked --offline --lib: 12 passed, 2 ignored. git diff --check и разбор YAML прошли.
 - [ ] Подтвердить сборки GitHub Actions, опубликованные assets и доступность latest.json по endpoint установленных Windows-версий.
 - [ ] Ручная проверка обновления из установленной Windows-версии, диктовки/PTT/отмены, буфера и геометрии оверлея.
+
+- Проверка предыдущего latest.json выявила отдельные записи windows-x86_64, windows-x86_64-msi и windows-x86_64-nsis. Проверка NSIS в workflow ограничена default/nsis, поскольку MSI остаётся отдельным допустимым установщиком. Тег v1.3.0 сохраняется; если старый шаг проверки отклонит MSI-запись, публикация будет завершена вручную после проверки всех артефактов.
