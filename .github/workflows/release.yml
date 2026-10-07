@@ -56,6 +56,7 @@ jobs:
 
   build-linux:
     uses: ./.github/workflows/linux.yml
+    secrets: inherit
 
   publish-release:
     needs: [publish-tauri, build-linux]
@@ -77,6 +78,7 @@ jobs:
             find "linux-artifacts/vispeak-linux-$distro" -type f \( -name '*.deb' -o -name '*.rpm' \) -print0 |
               while IFS= read -r -d '' package; do
                 cp "$package" "release-assets/${RELEASE_TAG}-${distro}-$(basename "$package")"
+                cp "$package.sig" "release-assets/${RELEASE_TAG}-${distro}-$(basename "$package").sig"
               done
           done
           install -Dm755 linux-artifacts/vispeak-linux-arch/vispeak arch-package/usr/bin/vispeak
@@ -107,6 +109,27 @@ jobs:
               assert signature and platform["signature"].strip() == signature
           print("Windows NSIS updater manifest validated")
           PYVERIFY
+      - name: Merge Linux updates and verify all signatures
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 scripts/prepare-release-updater.py "$RELEASE_TAG" updater-check/latest.json release-assets
+          gh release download "$RELEASE_TAG" --pattern '*-setup.exe' --dir updater-check
+          sudo apt-get update -qq
+          sudo apt-get install -y minisign
+          python3 - <<'PYPUBKEY'
+          import base64, json
+          from pathlib import Path
+          config = json.loads(Path('src-tauri/tauri.conf.json').read_text())
+          Path('updater-check/updater.pub').write_bytes(base64.b64decode(config['plugins']['updater']['pubkey']))
+          PYPUBKEY
+          for signature in updater-check/*.exe.sig release-assets/*.deb.sig release-assets/*.rpm.sig; do
+            decoded="updater-check/$(basename "$signature").minisig"
+            base64 --decode "$signature" > "$decoded"
+            minisign -Vm "${signature%.sig}" -x "$decoded" -p updater-check/updater.pub
+          done
+          gh release upload "$RELEASE_TAG" updater-check/latest.json --clobber
       - name: Upload Linux assets and publish completed release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

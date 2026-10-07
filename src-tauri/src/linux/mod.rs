@@ -177,6 +177,19 @@ pub fn vispeak_is_focused() -> bool {
 }
 
 pub fn setup(app: tauri::AppHandle) {
+    use gtk::prelude::*;
+    if let Some(window) = app.get_webview_window("main") {
+        if let Ok(native) = window.gtk_window() {
+            native.set_app_paintable(false);
+            native.set_opacity(1.0);
+        }
+        let _ = window.with_webview(|webview| {
+            use webkit2gtk::WebViewExt;
+            webview
+                .inner()
+                .set_background_color(&gtk::gdk::RGBA::new(1.0, 1.0, 1.0, 1.0));
+        });
+    }
     overlay::setup(&app);
     if let Some(window) = app.get_webview_window("overlay") {
         let _ = window.set_focusable(false);

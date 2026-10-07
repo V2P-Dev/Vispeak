@@ -14,6 +14,7 @@ function App() {
 
   useEffect(() => {
     const appWindow = getCurrentWindow();
+    document.documentElement.dataset.window = appWindow.label;
     setWindowLabel(appWindow.label);
 
     // For MainWindow and OverlayWindow, fetch initial theme setting from Rust backend

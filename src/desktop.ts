@@ -1,5 +1,6 @@
 export interface DesktopCapabilities {
   native_updater: boolean;
+  updater_target: string | null;
   live_typing: boolean;
   wayland: boolean;
   errors: string[];

@@ -99,9 +99,9 @@ The recipe builds the current `main` sources and installs `vispeak-git`; it is n
 
 Start **Vispeak** from the application menu or run `vispeak`. On Wayland, approve portal requests for hotkeys and keyboard control. Check the actual system-assigned shortcut in Controls; use the system shortcut configuration button if needed.
 
-You need `xdg-desktop-portal` and a desktop backend implementing GlobalShortcuts and RemoteDesktop, such as KDE. X11 uses `xdotool` and `xclip`. GNOME may need an AppIndicator extension for the tray icon. Install a newer package to update Linux; the Windows updater does not apply to Linux builds.
+You need `xdg-desktop-portal` and a desktop backend implementing GlobalShortcuts and RemoteDesktop, such as KDE. X11 uses `xdotool` and `xclip`. GNOME may need an AppIndicator extension for the tray icon. Starting with v1.4.0, installed Fedora RPM and Ubuntu/Debian DEB packages can check for updates in settings and install signed packages after a system administrator prompt. The original Linux v1.3.0 package needs one manual upgrade to enable this. Arch/source builds use the package manager.
 
-**Application testing of v1.3.0 is limited to Fedora Linux 44 KDE Plasma Desktop Edition, Plasma 6.7.5 / KWin 6.7.5, Wayland.** Builds for other systems do not confirm runtime testing. Overlay rounding during processing/results and visual caret placement still need confirmation. See the [Linux guide](docs/LINUX.md) for further dependencies and limitations.
+**Application testing of v1.4.0 is limited to Fedora Linux 44 KDE Plasma Desktop Edition, Plasma 6.7.5 / KWin 6.7.5, Wayland.** Builds for other systems do not confirm runtime testing. The user confirmed working window buttons, caret placement, audio ducking, and particle clipping on Fedora KDE Wayland. See the [Linux guide](docs/LINUX.md) for further dependencies and limitations.
 
 ## Getting Started
 

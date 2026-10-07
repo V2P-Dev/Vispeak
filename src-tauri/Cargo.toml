@@ -1,6 +1,6 @@
 [package]
 name = "vispeak"
-version = "1.3.0"
+version = "1.4.0"
 description = "Offline voice dictation"
 license = "MIT"
 homepage = "https://github.com/V2P-Dev/Vispeak"
@@ -20,7 +20,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "protocol-asset"] }
+tauri = { version = "2.12.1", features = ["tray-icon", "protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"

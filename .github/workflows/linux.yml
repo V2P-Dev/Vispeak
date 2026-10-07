@@ -2,6 +2,11 @@ name: Linux builds
 
 on:
   workflow_call:
+    secrets:
+      TAURI_SIGNING_PRIVATE_KEY:
+        required: false
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
+        required: false
   workflow_dispatch:
   pull_request:
     paths:
@@ -59,7 +64,7 @@ jobs:
           DEBIAN_FRONTEND=noninteractive apt-get install -y git curl ca-certificates build-essential cmake clang libclang-dev pkg-config libgtk-3-dev libgtk-layer-shell-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libssl-dev libasound2-dev libx11-dev libxtst-dev libxi-dev xclip xdotool xvfb xauth
       - name: Install Fedora build dependencies
         if: matrix.distro == 'fedora'
-        run: dnf install -y git curl gcc-c++ cmake clang clang-devel llvm-devel pkgconf-pkg-config gtk3-devel gtk-layer-shell-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel gtk-layer-shell-devel librsvg2-devel patchelf openssl-devel alsa-lib-devel libX11-devel libXtst-devel libXi-devel xclip xdotool xorg-x11-server-Xvfb xorg-x11-xauth rpm-build
+        run: dnf install -y git curl gcc-c++ cmake clang clang-devel llvm-devel pkgconf-pkg-config gtk3-devel gtk-layer-shell-devel webkit2gtk4.1-devel libayatana-appindicator-gtk3-devel gtk-layer-shell-devel librsvg2-devel patchelf openssl-devel alsa-lib-devel libX11-devel libXtst-devel libXi-devel xclip xdotool xorg-x11-server-Xvfb xorg-x11-xauth rpm-build kwin-devel qt6-qtdeclarative-devel kf6-kconfig-devel
       - name: Install Arch build dependencies
         if: matrix.distro == 'arch'
         run: pacman -Syu --noconfirm git curl base-devel cmake clang rust nodejs npm pkgconf gtk3 gtk-layer-shell webkit2gtk-4.1 libappindicator-gtk3 librsvg patchelf openssl alsa-lib libx11 libxtst libxi xclip xdotool xorg-server-xvfb xorg-xauth
@@ -75,15 +80,30 @@ jobs:
         run: xvfb-run -a cargo test --locked --manifest-path src-tauri/Cargo.toml --lib paste::tests -- --ignored --test-threads=1
       - name: Build distribution package
         if: matrix.bundles != 'none'
+        env:
+          VISPEAK_BUILD_KWIN_CARET: ${{ matrix.distro == 'fedora' && '1' || '0' }}
         run: npm run build:linux -- --bundles ${{ matrix.bundles }} -- --locked
       - name: Build Arch executable
         if: matrix.bundles == 'none'
         run: npm run build:linux -- --no-bundle -- --locked
+      - name: Sign Linux update packages
+        if: matrix.bundles != 'none' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          test -n "$TAURI_SIGNING_PRIVATE_KEY"
+          find src-tauri/target/linux/release/bundle -type f \( -name '*.deb' -o -name '*.rpm' \) -print0 |
+            while IFS= read -r -d '' package; do
+              npx tauri signer sign "$package"
+            done
       - uses: actions/upload-artifact@v4
         with:
           name: vispeak-linux-${{ matrix.distro }}
           path: |
             src-tauri/target/linux/release/bundle/**/*.deb
             src-tauri/target/linux/release/bundle/**/*.rpm
+            src-tauri/target/linux/release/bundle/**/*.deb.sig
+            src-tauri/target/linux/release/bundle/**/*.rpm.sig
             src-tauri/target/linux/release/vispeak
           if-no-files-found: error

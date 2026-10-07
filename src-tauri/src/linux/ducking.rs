@@ -17,6 +17,10 @@ pub struct DuckingGuard {
 fn recovery_path() -> PathBuf {
     crate::settings::get_app_data_dir().join("linux-ducking.json")
 }
+// PipeWire's pactl emits client IDs as strings; PulseAudio may emit numbers.
+fn numeric_id(value: &Value) -> Option<u64> {
+    value.as_u64().or_else(|| value.as_str()?.parse().ok())
+}
 fn inputs() -> Result<Vec<Value>, String> {
     let bytes = super::paste::command("pactl", &["--format=json", "list", "sink-inputs"], None)?;
     serde_json::from_slice(&bytes).map_err(|error| error.to_string())
@@ -35,7 +39,7 @@ fn restore(snapshots: &[Snapshot]) -> bool {
         // Avoid restoring a reused stream id belonging to a different process.
         if current.iter().any(|input| {
             input["index"].as_u64() == Some(snapshot.index)
-                && input["client"].as_u64() == Some(snapshot.client)
+                && numeric_id(&input["client"]) == Some(snapshot.client)
                 && input["properties"]["application.process.id"].as_str()
                     == Some(snapshot.process.as_str())
         }) {
@@ -59,7 +63,7 @@ impl DuckingGuard {
                 }
                 let (Some(index), Some(client), Some(volume)) = (
                     input["index"].as_u64(),
-                    input["client"].as_u64(),
+                    numeric_id(&input["client"]),
                     input["volume"].as_object(),
                 ) else {
                     continue;
@@ -111,5 +115,18 @@ pub fn restore_all_on_startup() {
                 let _ = std::fs::remove_file(recovery_path());
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn accepts_pipewire_and_pulseaudio_client_ids() {
+        assert_eq!(numeric_id(&serde_json::json!("1038")), Some(1038));
+        assert_eq!(numeric_id(&serde_json::json!(1038)), Some(1038));
+        assert_eq!(numeric_id(&Value::Null), None);
+        assert_eq!(numeric_id(&serde_json::json!("invalid")), None);
     }
 }

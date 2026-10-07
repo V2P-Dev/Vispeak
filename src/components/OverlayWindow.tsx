@@ -874,7 +874,7 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
     <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
       <div
         style={{ borderRadius: "9999px", ...glowVars } as React.CSSProperties}
-        className={`w-[199px] h-[44px] px-4 bg-overlay/95 rounded-full flex flex-row items-center transition-opacity duration-200 ${glowClass} ${isVisible ? 'opacity-100' : 'opacity-0'} relative`}
+        className={`w-[199px] h-[44px] px-4 bg-overlay/95 rounded-full overflow-hidden flex flex-row items-center transition-opacity duration-200 ${glowClass} ${isVisible ? 'opacity-100' : 'opacity-0'} relative`}
       >
         
         {/* RECORDING STATE */}
@@ -887,7 +887,7 @@ function OverlayCompact(props: ReturnType<typeof useOverlayState>) {
             <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
             <line x1="12" x2="12" y1="19" y2="22"></line>
           </svg>
-          <div ref={containerRef} className="flex-1 flex justify-center items-center overflow-hidden pl-4 pr-0">
+          <div ref={containerRef} className="flex-1 min-w-0 h-6 flex justify-center items-center overflow-hidden pl-4 pr-0">
             <EqualizerVisualizer style={props.equalizerStyle} level={level} colorClass="bg-accent" count={dotCount} />
           </div>
         </div>
@@ -994,7 +994,7 @@ function OverlayMini(props: ReturnType<typeof useOverlayState>) {
     <div className="flex w-full h-full items-center justify-center p-6 bg-transparent">
       <div
         style={{ borderRadius: "9999px", ...glowVars } as React.CSSProperties}
-        className={`w-[86px] h-[34px] px-2.5 bg-overlay/95 rounded-full flex flex-row items-center justify-center transition-opacity duration-200 ${glowClass} ${isVisible ? 'opacity-100' : 'opacity-0'} relative`}
+        className={`w-[86px] h-[34px] px-2.5 bg-overlay/95 rounded-full overflow-hidden flex flex-row items-center justify-center transition-opacity duration-200 ${glowClass} ${isVisible ? 'opacity-100' : 'opacity-0'} relative`}
       >
         
         {/* RECORDING STATE */}

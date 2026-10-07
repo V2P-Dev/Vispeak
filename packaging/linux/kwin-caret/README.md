@@ -33,8 +33,15 @@ end the graphical session. No persistent compositor configuration is changed.
 
 Development builds automatically discover the module built at
 `src-tauri/target/kwin-caret/Vispeak/CaretBridge` in this checkout. Production
-builds require `VISPEAK_KWIN_CARET_MODULE` to point to the absolute module
-directory before starting Vispeak. Without a module, Vispeak uses AT-SPI and the
+builds discover a bundled module in the app resources. Fedora CI builds and
+bundles it using the distribution's KWin headers. For local package builds,
+install `kwin-devel qt6-qtbase-devel qt6-qtdeclarative-devel kf6-kconfig-devel`
+and run `VISPEAK_BUILD_KWIN_CARET=1 npm run build:linux -- --bundles rpm`.
+The bundle records its compile-time KWin version and Vispeak checks it against
+the running compositor before loading native code. After a KWin update, a
+matching rebuild is needed; otherwise Vispeak falls back to AT-SPI.
+`VISPEAK_KWIN_CARET_MODULE` overrides discovery with an absolute module directory.
+Without a module, Vispeak uses AT-SPI and the
 ordinary JavaScript window-geometry probe. A failed native probe falls back to
 the ordinary probe.
 

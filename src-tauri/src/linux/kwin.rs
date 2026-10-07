@@ -118,10 +118,19 @@ pub async fn active_window() -> Option<ActiveWindow> {
     {
         return None;
     }
-    // Production loads only an explicitly configured module. Development can
-    // use the bridge deliberately built in this checkout's ignored target dir.
+    // An explicit override wins; Fedora packages include a versioned bridge.
     let module = std::env::var_os("VISPEAK_KWIN_CARET_MODULE")
         .map(std::path::PathBuf::from)
+        .or_else(|| {
+            use tauri::Manager;
+            super::APP
+                .get()?
+                .path()
+                .resource_dir()
+                .ok()
+                .map(|path| path.join("kwin-caret/Vispeak/CaretBridge"))
+                .filter(|path| path.join("kwin-version").is_file())
+        })
         .or_else(|| {
             if cfg!(debug_assertions) {
                 Some(
@@ -137,6 +146,16 @@ pub async fn active_window() -> Option<ActiveWindow> {
                 && path.join("qmldir").is_file()
                 && path.join("libVispeakCaretBridge.so").is_file()
         });
+    let module = if let Some(path) = module {
+        if path.join("kwin-version").is_file() && !module_matches_running_kwin(&path).await {
+            crate::log_debug("[caret] packaged bridge does not match running KWin; using AT-SPI");
+            None
+        } else {
+            Some(path)
+        }
+    } else {
+        None
+    };
     let window = probe(module.clone()).await;
     if window.is_none() && module.is_some() {
         crate::log_debug("[caret] native KWin probe failed; using ordinary window geometry");
@@ -144,6 +163,33 @@ pub async fn active_window() -> Option<ActiveWindow> {
     } else {
         window
     }
+}
+
+async fn module_matches_running_kwin(path: &std::path::Path) -> bool {
+    let Ok(version) = std::fs::read_to_string(path.join("kwin-version")) else {
+        return false;
+    };
+    let result = async {
+        let connection = zbus::Connection::session().await.ok()?;
+        let proxy = zbus::Proxy::new(&connection, "org.kde.KWin", "/KWin", "org.kde.KWin")
+            .await
+            .ok()?;
+        let info: String = proxy.call("supportInformation", &()).await.ok()?;
+        Some(matches_kwin_version(&info, &version))
+    };
+    tokio::time::timeout(Duration::from_millis(150), result)
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or(false)
+}
+
+fn matches_kwin_version(info: &str, version: &str) -> bool {
+    !version.trim().is_empty()
+        && info.lines().any(|line| {
+            line.strip_prefix("KWin version:")
+                .is_some_and(|running| running.trim() == version.trim())
+        })
 }
 
 async fn probe(module: Option<std::path::PathBuf>) -> Option<ActiveWindow> {
@@ -251,6 +297,14 @@ async fn probe(module: Option<std::path::PathBuf>) -> Option<ActiveWindow> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn packaged_bridge_requires_exact_running_version() {
+        let info = "KWin Support Information:\nKWin version: 6.7.5\nQt Version: 6.11.2";
+        assert!(super::matches_kwin_version(info, "6.7.5\n"));
+        assert!(!super::matches_kwin_version(info, "6.7.4"));
+        assert!(!super::matches_kwin_version(info, ""));
+        assert!(!super::matches_kwin_version("", "6.7.5"));
+    }
     use super::*;
     use crate::caret_position::{CaretKind, CaretRect};
 

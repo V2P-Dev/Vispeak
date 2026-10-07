@@ -78,7 +78,7 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
         setIsChecking(false);
         return { status: "package-managed" };
       }
-      const update = await check();
+      const update = await check({ target: capabilities.updater_target ?? undefined });
       
       console.log("[UPDATER] HTTP status: 200 (implied, if check() succeeded)");
       console.log("[UPDATER] Manifest parsed: true");

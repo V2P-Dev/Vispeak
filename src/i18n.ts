@@ -252,7 +252,7 @@ export const translations = {
       err_transcription_failed: "Ошибка распознавания",
     },
     updater_status: {
-      "package-managed": "В Linux обновляйте Vispeak через пакетный менеджер или установите новый пакет со страницы релизов.",
+      "package-managed": "Для этой сборки используйте пакетный менеджер или установите пакет со страницы релизов.",
       "available": "Доступно обновление",
       "up-to-date": "У вас установлена последняя версия.",
       "no-internet": "Не удалось подключиться к серверу обновлений.",
@@ -514,7 +514,7 @@ export const translations = {
       err_transcription_failed: "Transcription failed",
     },
     updater_status: {
-      "package-managed": "On Linux, update Vispeak through your package manager or install a new package from the releases page.",
+      "package-managed": "For this build, use your package manager or install a package from the releases page.",
       "available": "Update Available",
       "up-to-date": "You have the latest version installed.",
       "no-internet": "Failed to connect to the update server.",
