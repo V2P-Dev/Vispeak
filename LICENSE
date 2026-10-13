@@ -1,0 +1,16 @@
+Copyright (c) 2026 V2P | Vladimir Puchnin. All rights reserved.
+
+This software and its source code are proprietary. No part of it may be
+copied, modified, distributed, or used to create derivative works without
+prior written permission from the copyright holder.
+
+Official release builds published at https://github.com/V2P-Dev/Vispeak/releases
+may be downloaded, installed, and used free of charge.
+
+Exceptions:
+- Source code and builds published up to and including v1.4.1 were released
+  under the MIT License and remain available under its terms for those versions.
+- The KWin caret bridge in packaging/linux/kwin-caret/ is licensed under the
+  GNU General Public License, version 2 or later (GPL-2.0-or-later).
+- Third-party components are licensed under their own terms; see
+  THIRD_PARTY_LICENSES.md.
